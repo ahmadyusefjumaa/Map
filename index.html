@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1,
+               maximum-scale=1,
+               user-scalable=no,
+               viewport-fit=cover">
+
+<title>تتبع التحركات</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<!-- Leaflet Rotate -->
+<link rel="stylesheet"
+      href="https://unpkg.com/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.css">
+
+<style>
+
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #05090b;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Tahoma,
+        Arial,
+        sans-serif;
+}
+
+/* =========================================================
+   MAP
+========================================================= */
+
+#map {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: #05090b;
+    overflow: hidden;
+}
+
+/*
+   جعل الخريطة ليلية مع لمسة سماوية.
+*/
+.leaflet-tile {
+    filter:
+        brightness(0.48)
+        contrast(1.28)
+        saturate(1.35)
+        hue-rotate(7deg);
+}
+
+/* إزالة الإطار الافتراضي */
+.leaflet-container {
+    background: #05090b;
+    outline: none;
+}
+
+/* إخفاء الـ attribution بشكل خفيف */
+.leaflet-control-attribution {
+    background: rgba(3, 8, 10, 0.55) !important;
+    color: rgba(255,255,255,0.38) !important;
+    font-size: 9px !important;
+    border-radius: 6px 0 0 0;
+    backdrop-filter: blur(5px);
+}
+
+.leaflet-control-attribution a {
+    color: rgba(25, 208, 200, 0.7) !important;
+}
+
+/* =========================================================
+   LOCATION MARKER
+========================================================= */
+
+.user-location-marker {
+    width: 24px;
+    height: 24px;
+    position: relative;
+}
+
+.user-location-dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+
+    width: 15px;
+    height: 15px;
+
+    transform: translate(-50%, -50%);
+
+    background: #19d0c8;
+
+    border: 3px solid #ffffff;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 0 4px rgba(25, 208, 200, 0.20),
+        0 0 18px rgba(25, 208, 200, 0.85);
+}
+
+/* =========================================================
+   ACCURACY CIRCLE
+========================================================= */
+
+.accuracy-circle {
+    background: rgba(25, 208, 200, 0.10);
+    border: 1px solid rgba(25, 208, 200, 0.35);
+}
+
+/* =========================================================
+   RECORD BUTTON
+========================================================= */
+
+#recordButton {
+    position: fixed;
+
+    left: 50%;
+    bottom: calc(26px + env(safe-area-inset-bottom));
+
+    transform: translateX(-50%);
+
+    width: 82px;
+    height: 82px;
+
+    border: none;
+    outline: none;
+
+    border-radius: 50%;
+
+    background: rgba(5, 10, 12, 0.88);
+
+    border: 2px solid rgba(255,255,255,0.88);
+
+    box-shadow:
+        0 8px 30px rgba(0,0,0,0.45),
+        0 0 0 7px rgba(0,0,0,0.22);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    z-index: 9999;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+#recordButton:active {
+    transform: translateX(-50%) scale(0.92);
+}
+
+/* الحلقة البيضاء الداخلية */
+
+.record-inner-ring {
+    width: 62px;
+    height: 62px;
+
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-shadow:
+        0 2px 12px rgba(0,0,0,0.35);
+}
+
+/* الدائرة الحمراء */
+
+.record-core {
+    width: 43px;
+    height: 43px;
+
+    border-radius: 50%;
+
+    background: #ff3045;
+
+    box-shadow:
+        0 0 0 0 rgba(255,48,69,0.65),
+        0 0 18px rgba(255,48,69,0.45);
+
+    transition:
+        width 0.22s ease,
+        height 0.22s ease,
+        border-radius 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+/* =========================================================
+   RECORDING STATE
+========================================================= */
+
+#recordButton.recording {
+    border-color: rgba(255,255,255,0.95);
+
+    box-shadow:
+        0 8px 30px rgba(0,0,0,0.5),
+        0 0 0 7px rgba(255,48,69,0.08),
+        0 0 25px rgba(255,48,69,0.20);
+}
+
+/*
+   أثناء التسجيل تتحول الدائرة
+   إلى مربع مثل زر تسجيل الفيديو.
+*/
+
+#recordButton.recording .record-core {
+    width: 25px;
+    height: 25px;
+
+    border-radius: 6px;
+
+    box-shadow:
+        0 0 0 0 rgba(255,48,69,0.65),
+        0 0 18px rgba(255,48,69,0.65);
+
+    animation: recordingPulse 1.5s infinite;
+}
+
+@keyframes recordingPulse {
+
+    0% {
+        box-shadow:
+            0 0 0 0 rgba(255,48,69,0.55),
+            0 0 15px rgba(255,48,69,0.35);
+    }
+
+    60% {
+        box-shadow:
+            0 0 0 12px rgba(255,48,69,0),
+            0 0 22px rgba(255,48,69,0.55);
+    }
+
+    100% {
+        box-shadow:
+            0 0 0 0 rgba(255,48,69,0),
+            0 0 15px rgba(255,48,69,0.35);
+    }
+}
+
+/* =========================================================
+   RECORDING INDICATOR
+========================================================= */
+
+#recordingIndicator {
+    position: fixed;
+
+    top: calc(18px + env(safe-area-inset-top));
+    right: 18px;
+
+    z-index: 9999;
+
+    display: none;
+
+    align-items: center;
+    gap: 8px;
+
+    padding: 8px 12px;
+
+    border-radius: 999px;
+
+    background: rgba(4, 10, 12, 0.72);
+
+    border: 1px solid rgba(25,208,200,0.28);
+
+    backdrop-filter: blur(12px);
+
+    color: #ffffff;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    box-shadow:
+        0 6px 25px rgba(0,0,0,0.3);
+}
+
+#recordingIndicator.active {
+    display: flex;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+
+    border-radius: 50%;
+
+    background: #ff3045;
+
+    box-shadow:
+        0 0 10px rgba(255,48,69,0.8);
+
+    animation: indicatorPulse 1.2s infinite;
+}
+
+@keyframes indicatorPulse {
+
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.35;
+        transform: scale(0.75);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* =========================================================
+   PERMISSION MODAL
+========================================================= */
+
+#permissionModal {
+    position: fixed;
+    inset: 0;
+
+    z-index: 20000;
+
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 25px;
+
+    background: rgba(0,0,0,0.72);
+
+    backdrop-filter: blur(10px);
+}
+
+#permissionModal.show {
+    display: flex;
+}
+
+.permission-box {
+    width: min(360px, 100%);
+
+    padding: 25px 22px;
+
+    border-radius: 24px;
+
+    background: #11191c;
+
+    border: 1px solid rgba(25,208,200,0.25);
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,0.6);
+
+    text-align: center;
+
+    color: #ffffff;
+}
+
+.permission-icon {
+    width: 62px;
+    height: 62px;
+
+    margin: 0 auto 16px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(25,208,200,0.12);
+
+    border: 1px solid rgba(25,208,200,0.3);
+
+    color: #19d0c8;
+
+    font-size: 28px;
+}
+
+.permission-box h2 {
+    margin: 0 0 10px;
+
+    font-size: 20px;
+}
+
+.permission-box p {
+    margin: 0 0 20px;
+
+    color: #9aabad;
+
+    line-height: 1.7;
+
+    font-size: 14px;
+}
+
+#permissionButton {
+    width: 100%;
+
+    height: 48px;
+
+    border: none;
+
+    border-radius: 14px;
+
+    background: #19d0c8;
+
+    color: #041011;
+
+    font-size: 15px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+/* =========================================================
+   ERROR TOAST
+========================================================= */
+
+#errorToast {
+    position: fixed;
+
+    left: 50%;
+
+    bottom: calc(
+        120px + env(safe-area-inset-bottom)
+    );
+
+    transform:
+        translateX(-50%)
+        translateY(20px);
+
+    z-index: 15000;
+
+    max-width: calc(100% - 40px);
+
+    padding: 12px 17px;
+
+    border-radius: 14px;
+
+    background: rgba(15, 20, 22, 0.94);
+
+    border: 1px solid rgba(255,70,80,0.3);
+
+    color: #ffffff;
+
+    font-size: 13px;
+
+    text-align: center;
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+
+    box-shadow:
+        0 10px 35px rgba(0,0,0,0.45);
+}
+
+#errorToast.show {
+    opacity: 1;
+
+    transform:
+        translateX(-50%)
+        translateY(0);
+}
+
+/* =========================================================
+   LOCATION LOADING
+========================================================= */
+
+#loadingLocation {
+    position: fixed;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    z-index: 9000;
+
+    padding: 13px 18px;
+
+    border-radius: 999px;
+
+    background: rgba(5,10,12,0.80);
+
+    border: 1px solid rgba(25,208,200,0.25);
+
+    color: #ffffff;
+
+    font-size: 13px;
+
+    backdrop-filter: blur(12px);
+
+    display: none;
+}
+
+#loadingLocation.show {
+    display: block;
+}
+
+/* =========================================================
+   HIDE DEFAULT ROTATE CONTROL
+========================================================= */
+
+.leaflet-rotate-control {
+    display: none !important;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+    #recordButton {
+        width: 78px;
+        height: 78px;
+    }
+
+    .record-inner-ring {
+        width: 59px;
+        height: 59px;
+    }
+
+    .record-core {
+        width: 41px;
+        height: 41px;
+    }
+
+    #recordButton.recording .record-core {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- =======================================================
+     MAP
+======================================================= -->
+
+<div id="map"></div>
+
+
+<!-- =======================================================
+     RECORDING INDICATOR
+======================================================= -->
+
+<div id="recordingIndicator">
+
+    <span class="recording-dot"></span>
+
+    <span>جاري التسجيل</span>
+
+</div>
+
+
+<!-- =======================================================
+     LOCATION LOADING
+======================================================= -->
+
+<div id="loadingLocation">
+    جاري تحديد موقعك...
+</div>
+
+
+<!-- =======================================================
+     RECORD BUTTON
+======================================================= -->
+
+<button
+    id="recordButton"
+    type="button"
+    aria-label="بدء التسجيل">
+
+    <span class="record-inner-ring">
+        <span class="record-core"></span>
+    </span>
+
+</button>
+
+
+<!-- =======================================================
+     PERMISSION MODAL
+======================================================= -->
+
+<div id="permissionModal">
+
+    <div class="permission-box">
+
+        <div class="permission-icon">
+            ◉
+        </div>
+
+        <h2>السماح بالموقع والاتجاه</h2>
+
+        <p>
+            يحتاج التطبيق إلى الوصول إلى موقعك واتجاه الهاتف
+            حتى يتمكن من تسجيل تحركاتك وتدوير الخريطة
+            بحيث يكون الاتجاه الذي تنظر إليه أمامك دائمًا.
+        </p>
+
+        <button
+            id="permissionButton"
+            type="button">
+            السماح والمتابعة
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =======================================================
+     LEAFLET
+======================================================= -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- =======================================================
+     LEAFLET ROTATE
+======================================================= -->
+
+<script src="https://unpkg.com/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
+
+
+<script>
+
+/* =========================================================
+   VARIABLES
+========================================================= */
+
+let map = null;
+
+let watchId = null;
+
+let currentMarker = null;
+
+let accuracyCircle = null;
+
+let routeLine = null;
+
+let routePoints = [];
+
+let isRecording = false;
+
+let orientationActive = false;
+
+let orientationListener = null;
+
+let orientationAbsoluteListener = null;
+
+let lastHeading = null;
+
+let smoothedHeading = null;
+
+let firstLocationReceived = false;
+
+
+/* =========================================================
+   DEFAULT LOCATION
+========================================================= */
+
+/*
+   موقع افتراضي فقط إلى أن يتم تحديد موقع الهاتف.
+*/
+
+const DEFAULT_LOCATION = [
+    25.2048,
+    55.2708
+];
+
+
+/* =========================================================
+   DOM
+========================================================= */
+
+const recordButton =
+    document.getElementById("recordButton");
+
+const recordingIndicator =
+    document.getElementById("recordingIndicator");
+
+const permissionModal =
+    document.getElementById("permissionModal");
+
+const permissionButton =
+    document.getElementById("permissionButton");
+
+const errorToast =
+    document.getElementById("errorToast");
+
+const loadingLocation =
+    document.getElementById("loadingLocation");
+
+
+/* =========================================================
+   MAP INITIALIZATION
+========================================================= */
+
+map = L.map("map", {
+
+    zoomControl: false,
+
+    attributionControl: true,
+
+    /*
+       تفعيل دوران الخريطة.
+    */
+    rotate: true,
+
+    /*
+       لا نريد دوران الخريطة بإصبعين
+       لأننا نستخدم بوصلة الهاتف.
+    */
+    touchRotate: false,
+
+    dragRotate: false,
+
+    shiftKeyRotate: false,
+
+    rotateClockwise: true,
+
+    bearing: 0,
+
+    /*
+       منع تكبير الصفحة عند استخدام الإيماءات.
+    */
+    preventPageGestures: true
+
+}).setView(
+    DEFAULT_LOCATION,
+    15
+);
+
+
+/* =========================================================
+   TILE LAYER
+========================================================= */
+
+L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        maxZoom: 20,
+
+        minZoom: 2,
+
+        attribution:
+            '&copy; OpenStreetMap contributors',
+
+        updateWhenIdle: false,
+
+        keepBuffer: 4
+    }
+).addTo(map);
+
+
+/* =========================================================
+   USER LOCATION ICON
+========================================================= */
+
+const userIcon = L.divIcon({
+
+    className: "",
+
+    html: `
+        <div class="user-location-marker">
+            <div class="user-location-dot"></div>
+        </div>
+    `,
+
+    iconSize: [24, 24],
+
+    iconAnchor: [12, 12]
+});
+
+
+/* =========================================================
+   ERROR MESSAGE
+========================================================= */
+
+let errorTimer = null;
+
+function showError(message) {
+
+    clearTimeout(errorTimer);
+
+    errorToast.textContent = message;
+
+    errorToast.classList.add("show");
+
+    errorTimer = setTimeout(() => {
+
+        errorToast.classList.remove("show");
+
+    }, 4500);
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+function showLoading() {
+    loadingLocation.classList.add("show");
+}
+
+function hideLoading() {
+    loadingLocation.classList.remove("show");
+}
+
+
+/* =========================================================
+   DISTANCE
+========================================================= */
+
+function distanceBetween(lat1, lon1, lat2, lon2) {
+
+    const R = 6371000;
+
+    const toRad =
+        Math.PI / 180;
+
+    const dLat =
+        (lat2 - lat1) * toRad;
+
+    const dLon =
+        (lon2 - lon1) * toRad;
+
+    const a =
+        Math.sin(dLat / 2) *
+        Math.sin(dLat / 2) +
+
+        Math.cos(lat1 * toRad) *
+        Math.cos(lat2 * toRad) *
+
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c =
+        2 *
+        Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1 - a)
+        );
+
+    return R * c;
+}
+
+
+/* =========================================================
+   CREATE / UPDATE LOCATION
+========================================================= */
+
+function updateLocation(position) {
+
+    const lat =
+        position.coords.latitude;
+
+    const lng =
+        position.coords.longitude;
+
+    const accuracy =
+        position.coords.accuracy || 20;
+
+    const latLng =
+        [lat, lng];
+
+
+    hideLoading();
+
+
+    /* -----------------------------------------------------
+       Marker
+    ----------------------------------------------------- */
+
+    if (!currentMarker) {
+
+        currentMarker =
+            L.marker(
+                latLng,
+                {
+                    icon: userIcon,
+                    zIndexOffset: 1000
+                }
+            ).addTo(map);
+
+    } else {
+
+        currentMarker.setLatLng(latLng);
+
+    }
+
+
+    /* -----------------------------------------------------
+       Accuracy Circle
+    ----------------------------------------------------- */
+
+    if (!accuracyCircle) {
+
+        accuracyCircle =
+            L.circle(
+                latLng,
+                {
+                    radius: accuracy,
+
+                    className:
+                        "accuracy-circle",
+
+                    color: "#19d0c8",
+
+                    weight: 1,
+
+                    fillColor: "#19d0c8",
+
+                    fillOpacity: 0.08
+                }
+            ).addTo(map);
+
+    } else {
+
+        accuracyCircle.setLatLng(latLng);
+
+        accuracyCircle.setRadius(accuracy);
+
+    }
+
+
+    /* -----------------------------------------------------
+       Route
+    ----------------------------------------------------- */
+
+    if (isRecording) {
+
+        const lastPoint =
+            routePoints[
+                routePoints.length - 1
+            ];
+
+        /*
+           لا نضيف نقاطًا متقاربة جدًا
+           لتقليل عدد النقاط.
+        */
+
+        if (!lastPoint) {
+
+            routePoints.push(latLng);
+
+        } else {
+
+            const distance =
+                distanceBetween(
+                    lastPoint[0],
+                    lastPoint[1],
+                    lat,
+                    lng
+                );
+
+            if (distance >= 2) {
+
+                routePoints.push(latLng);
+
+            }
+
+        }
+
+
+        if (!routeLine) {
+
+            routeLine =
+                L.polyline(
+                    routePoints,
+                    {
+                        color: "#19d0c8",
+
+                        weight: 5,
+
+                        opacity: 0.88,
+
+                        lineCap: "round",
+
+                        lineJoin: "round"
+                    }
+                ).addTo(map);
+
+        } else {
+
+            routeLine.setLatLngs(
+                routePoints
+            );
+
+        }
+
+    }
+
+
+    /* -----------------------------------------------------
+       First Location
+    ----------------------------------------------------- */
+
+    if (!firstLocationReceived) {
+
+        firstLocationReceived = true;
+
+        map.setView(
+            latLng,
+            17,
+            {
+                animate: true
+            }
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   GEOLOCATION ERROR
+========================================================= */
+
+function locationError(error) {
+
+    hideLoading();
+
+    let message =
+        "تعذر الحصول على موقعك.";
+
+    switch (error.code) {
+
+        case error.PERMISSION_DENIED:
+
+            message =
+                "تم رفض الوصول إلى الموقع. فعّل إذن الموقع من إعدادات المتصفح.";
+
+            break;
+
+        case error.POSITION_UNAVAILABLE:
+
+            message =
+                "موقعك غير متاح حاليًا. تأكد من تشغيل GPS.";
+
+            break;
+
+        case error.TIMEOUT:
+
+            message =
+                "انتهى وقت تحديد الموقع. حاول مرة أخرى.";
+
+            break;
+
+    }
+
+    showError(message);
+}
+
+
+/* =========================================================
+   START GPS
+========================================================= */
+
+function startLocationTracking() {
+
+    if (!navigator.geolocation) {
+
+        showError(
+            "هذا المتصفح لا يدعم تحديد الموقع."
+        );
+
+        return;
+
+    }
+
+
+    showLoading();
+
+
+    /*
+       watchPosition يستمر في تحديث الموقع
+       أثناء الحركة.
+    */
+
+    watchId =
+        navigator.geolocation.watchPosition(
+            updateLocation,
+            locationError,
+            {
+                enableHighAccuracy: true,
+
+                maximumAge: 1000,
+
+                timeout: 15000
+            }
+        );
+
+}
+
+
+/* =========================================================
+   STOP GPS
+========================================================= */
+
+function stopLocationTracking() {
+
+    if (watchId !== null) {
+
+        navigator.geolocation.clearWatch(
+            watchId
+        );
+
+        watchId = null;
+    }
+
+}
+
+
+/* =========================================================
+   ANGLE NORMALIZATION
+========================================================= */
+
+function normalizeAngle(angle) {
+
+    angle = angle % 360;
+
+    if (angle < 0) {
+        angle += 360;
+    }
+
+    return angle;
+}
+
+
+/* =========================================================
+   SHORTEST ANGLE DIFFERENCE
+========================================================= */
+
+function angleDifference(
+    from,
+    to
+) {
+
+    return (
+        (to - from + 540) %
+        360
+    ) - 180;
+
+}
+
+
+/* =========================================================
+   SMOOTH HEADING
+========================================================= */
+
+function smoothHeading(
+    oldHeading,
+    newHeading,
+    factor = 0.20
+) {
+
+    const difference =
+        angleDifference(
+            oldHeading,
+            newHeading
+        );
+
+    return normalizeAngle(
+        oldHeading +
+        difference * factor
+    );
+
+}
+
+
+/* =========================================================
+   GET DEVICE HEADING
+========================================================= */
+
+function getHeadingFromEvent(event) {
+
+    /*
+       أجهزة Apple / Safari
+       توفر webkitCompassHeading
+       وهو أفضل مصدر للبوصلة.
+    */
+
+    if (
+        typeof event.webkitCompassHeading ===
+        "number" &&
+        !Number.isNaN(
+            event.webkitCompassHeading
+        )
+    ) {
+
+        return normalizeAngle(
+            event.webkitCompassHeading
+        );
+
+    }
+
+
+    /*
+       Absolute orientation
+       في المتصفحات التي توفر alpha
+       كاتجاه مطلق.
+    */
+
+    if (
+        event.absolute === true &&
+        typeof event.alpha === "number"
+    ) {
+
+        let heading =
+            360 - event.alpha;
+
+
+        /*
+           تصحيح اتجاه الشاشة.
+        */
+
+        const screenAngle =
+            (
+                screen.orientation &&
+                typeof screen.orientation.angle ===
+                "number"
+            )
+                ? screen.orientation.angle
+                : 0;
+
+
+        heading += screenAngle;
+
+
+        return normalizeAngle(
+            heading
+        );
+
+    }
+
+
+    return null;
+}
+
+
+/* =========================================================
+   HANDLE ORIENTATION
+========================================================= */
+
+function handleOrientation(event) {
+
+    if (!isRecording) {
+        return;
+    }
+
+
+    const heading =
+        getHeadingFromEvent(event);
+
+
+    if (heading === null) {
+        return;
+    }
+
+
+    /*
+       أول قراءة.
+    */
+
+    if (smoothedHeading === null) {
+
+        smoothedHeading =
+            heading;
+
+    } else {
+
+        smoothedHeading =
+            smoothHeading(
+                smoothedHeading,
+                heading,
+                0.18
+            );
+
+    }
+
+
+    lastHeading =
+        smoothedHeading;
+
+
+    /*
+       setHeading يجعل الاتجاه
+       الذي يحمله الهاتف أمام المستخدم
+       يظهر في أعلى الشاشة.
+
+       الخريطة تتحرك بسلاسة.
+    */
+
+    if (
+        map &&
+        typeof map.setHeading ===
+        "function"
+    ) {
+
+        map.setHeading(
+            smoothedHeading,
+            {
+                ease: 0.18,
+
+                deadzone: 0.7
+            }
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   REQUEST ORIENTATION PERMISSION
+========================================================= */
+
+async function requestOrientationPermission() {
+
+    /*
+       إذا كان المتصفح لا يوفر
+       requestPermission
+       نبدأ مباشرة.
+    */
+
+    if (
+        typeof DeviceOrientationEvent ===
+        "undefined"
+    ) {
+
+        return true;
+
+    }
+
+
+    if (
+        typeof DeviceOrientationEvent.requestPermission !==
+        "function"
+    ) {
+
+        return true;
+
+    }
+
+
+    try {
+
+        /*
+           true = نحتاج absolute orientation
+           حتى نستطيع استخدام البوصلة.
+        */
+
+        let permission;
+
+        try {
+
+            permission =
+                await DeviceOrientationEvent
+                    .requestPermission(true);
+
+        } catch (e) {
+
+            /*
+               بعض المتصفحات لا تقبل الوسيط.
+            */
+
+            permission =
+                await DeviceOrientationEvent
+                    .requestPermission();
+
+        }
+
+
+        if (permission === "granted") {
+
+            return true;
+
+        }
+
+
+        showError(
+            "لم يتم السماح باستخدام بوصلة الهاتف، لذلك لن تدور الخريطة مع اتجاه الهاتف."
+        );
+
+        return false;
+
+    } catch (error) {
+
+        console.error(
+            "Orientation permission error:",
+            error
+        );
+
+        return false;
+
+    }
+
+}
+
+
+/* =========================================================
+   START ORIENTATION
+========================================================= */
+
+function startOrientation() {
+
+    if (orientationActive) {
+        return;
+    }
+
+
+    if (
+        typeof DeviceOrientationEvent ===
+        "undefined"
+    ) {
+
+        showError(
+            "هذا الجهاز أو المتصفح لا يدعم بوصلة الهاتف."
+        );
+
+        return;
+
+    }
+
+
+    orientationListener =
+        handleOrientation;
+
+    orientationAbsoluteListener =
+        handleOrientation;
+
+
+    /*
+       الاتجاه العادي.
+    */
+
+    window.addEventListener(
+        "deviceorientation",
+        orientationListener,
+        true
+    );
+
+
+    /*
+       الاتجاه المطلق.
+       هذا هو الأفضل للبوصلة.
+    */
+
+    window.addEventListener(
+        "deviceorientationabsolute",
+        orientationAbsoluteListener,
+        true
+    );
+
+
+    orientationActive = true;
+
+}
+
+
+/* =========================================================
+   STOP ORIENTATION
+========================================================= */
+
+function stopOrientation() {
+
+    if (!orientationActive) {
+        return;
+    }
+
+
+    if (orientationListener) {
+
+        window.removeEventListener(
+            "deviceorientation",
+            orientationListener,
+            true
+        );
+
+    }
+
+
+    if (orientationAbsoluteListener) {
+
+        window.removeEventListener(
+            "deviceorientationabsolute",
+            orientationAbsoluteListener,
+            true
+        );
+
+    }
+
+
+    orientationListener = null;
+
+    orientationAbsoluteListener = null;
+
+    orientationActive = false;
+
+    lastHeading = null;
+
+    smoothedHeading = null;
+
+
+    /*
+       إيقاف Heading-Up.
+    */
+
+    if (
+        map &&
+        typeof map.stopHeadingUp ===
+        "function"
+    ) {
+
+        map.stopHeadingUp();
+
+    }
+
+
+    /*
+       إعادة الخريطة إلى الشمال.
+    */
+
+    if (
+        map &&
+        typeof map.setBearing ===
+        "function"
+    ) {
+
+        map.setBearing(0);
+
+    }
+
+}
+
+
+/* =========================================================
+   START RECORDING
+========================================================= */
+
+async function startRecording() {
+
+    if (isRecording) {
+        return;
+    }
+
+
+    /*
+       مهم جدًا:
+
+       نطلب صلاحية البوصلة هنا
+       لأن بعض الأجهزة لا تسمح بطلبها
+       إلا أثناء ضغطة المستخدم.
+    */
+
+    const orientationPermission =
+        await requestOrientationPermission();
+
+
+    /*
+       حتى لو لم يسمح المستخدم بالبوصلة،
+       نستطيع الاستمرار في تسجيل GPS.
+    */
+
+    startOrientation();
+
+    startLocationTracking();
+
+
+    isRecording = true;
+
+
+    recordButton.classList.add(
+        "recording"
+    );
+
+
+    recordButton.setAttribute(
+        "aria-label",
+        "إيقاف التسجيل"
+    );
+
+
+    recordingIndicator.classList.add(
+        "active"
+    );
+
+
+    /*
+       يبدأ Heading-Up بعد السماح.
+    */
+
+    if (
+        !orientationPermission
+    ) {
+
+        /*
+           لا نوقف التسجيل.
+           فقط الخريطة لن تدور إذا لم
+           يسمح المستخدم بالبوصلة.
+        */
+
+    }
+
+}
+
+
+/* =========================================================
+   STOP RECORDING
+========================================================= */
+
+function stopRecording() {
+
+    if (!isRecording) {
+        return;
+    }
+
+
+    isRecording = false;
+
+
+    stopLocationTracking();
+
+    stopOrientation();
+
+
+    recordButton.classList.remove(
+        "recording"
+    );
+
+
+    recordButton.setAttribute(
+        "aria-label",
+        "بدء التسجيل"
+    );
+
+
+    recordingIndicator.classList.remove(
+        "active"
+    );
+
+
+    hideLoading();
+
+}
+
+
+/* =========================================================
+   TOGGLE RECORDING
+========================================================= */
+
+async function toggleRecording() {
+
+    if (isRecording) {
+
+        stopRecording();
+
+    } else {
+
+        await startRecording();
+
+    }
+
+}
+
+
+/* =========================================================
+   RECORD BUTTON
+========================================================= */
+
+recordButton.addEventListener(
+    "click",
+    toggleRecording,
+    {
+        passive: false
+    }
+);
+
+
+/* =========================================================
+   PERMISSION BUTTON
+========================================================= */
+
+permissionButton.addEventListener(
+    "click",
+    async () => {
+
+        permissionModal.classList.remove(
+            "show"
+        );
+
+        await startRecording();
+
+    }
+);
+
+
+/* =========================================================
+   CHECK SECURE CONTEXT
+========================================================= */
+
+function checkSecurity() {
+
+    /*
+       الموقع يحتاج HTTPS في معظم
+       بيئات الهاتف الحديثة.
+    */
+
+    if (
+        location.protocol !== "https:" &&
+        location.hostname !== "localhost" &&
+        location.hostname !== "127.0.0.1"
+    ) {
+
+        console.warn(
+            "Geolocation / Device Orientation may require HTTPS."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   PREVENT DOUBLE TAP ZOOM
+========================================================= */
+
+let lastTouchEnd = 0;
+
+document.addEventListener(
+    "touchend",
+    function(event) {
+
+        const now =
+            Date.now();
+
+        if (
+            now - lastTouchEnd <= 300
+        ) {
+
+            event.preventDefault();
+
+        }
+
+        lastTouchEnd = now;
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+/* =========================================================
+   PREVENT CONTEXT MENU
+========================================================= */
+
+document.addEventListener(
+    "contextmenu",
+    function(event) {
+
+        event.preventDefault();
+
+    }
+);
+
+
+/* =========================================================
+   PREVENT TEXT SELECTION
+========================================================= */
+
+document.addEventListener(
+    "selectstart",
+    function(event) {
+
+        event.preventDefault();
+
+    }
+);
+
+
+/* =========================================================
+   INITIALIZATION
+========================================================= */
+
+checkSecurity();
+
+
+/*
+   نبدأ بالخريطة فقط.
+   لا نطلب الموقع أو البوصلة إلا عند
+   الضغط على زر التسجيل.
+*/
+
+console.log(
+    "Tracking map initialized."
+);
+
+</script>
+
+</body>
+</html>
