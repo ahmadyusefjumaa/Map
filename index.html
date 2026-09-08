@@ -1,14 +1,7 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html><html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width,
-               initial-scale=1,
-               maximum-scale=1,
-               user-scalable=no,
-               viewport-fit=cover">
+    <meta charset="UTF-8"><meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>تتبع التحركات</title>
 
@@ -16,1826 +9,1419 @@
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
-<!-- Leaflet Rotate -->
-<link rel="stylesheet"
-      href="https://unpkg.com/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.css">
 
 <style>
 
-/* =========================================================
-   RESET
-========================================================= */
+    /* =========================================
+       RESET
+    ========================================= */
 
-* {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    user-select: none;
-}
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-html,
-body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: #05090b;
-    font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Tahoma,
-        Arial,
-        sans-serif;
-}
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
 
-/* =========================================================
-   MAP
-========================================================= */
+    body {
+        background: #02080b;
+        font-family:
+            'Segoe UI',
+            Tahoma,
+            Geneva,
+            Verdana,
+            sans-serif;
 
-#map {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    background: #05090b;
-    overflow: hidden;
-}
+        position: fixed;
+        inset: 0;
 
-/*
-   جعل الخريطة ليلية مع لمسة سماوية.
-*/
-.leaflet-tile {
-    filter:
-        brightness(0.48)
-        contrast(1.28)
-        saturate(1.35)
-        hue-rotate(7deg);
-}
+        user-select: none;
+        -webkit-user-select: none;
 
-/* إزالة الإطار الافتراضي */
-.leaflet-container {
-    background: #05090b;
-    outline: none;
-}
+        -webkit-touch-callout: none;
 
-/* إخفاء الـ attribution بشكل خفيف */
-.leaflet-control-attribution {
-    background: rgba(3, 8, 10, 0.55) !important;
-    color: rgba(255,255,255,0.38) !important;
-    font-size: 9px !important;
-    border-radius: 6px 0 0 0;
-    backdrop-filter: blur(5px);
-}
+        touch-action: none;
+    }
 
-.leaflet-control-attribution a {
-    color: rgba(25, 208, 200, 0.7) !important;
-}
 
-/* =========================================================
-   LOCATION MARKER
-========================================================= */
+    /* =========================================
+       الخريطة FULL SCREEN
+    ========================================= */
 
-.user-location-marker {
-    width: 24px;
-    height: 24px;
-    position: relative;
-}
+    #map {
+        position: fixed;
 
-.user-location-dot {
-    position: absolute;
-    left: 50%;
-    top: 50%;
+        inset: 0;
 
-    width: 15px;
-    height: 15px;
+        width: 100vw;
+        height: 100vh;
 
-    transform: translate(-50%, -50%);
+        z-index: 1;
 
-    background: #19d0c8;
+        background: #02080b;
+    }
 
-    border: 3px solid #ffffff;
 
-    border-radius: 50%;
+    /*
+       فلتر ليلي سماوي فوق الخريطة
+    */
 
-    box-shadow:
-        0 0 0 4px rgba(25, 208, 200, 0.20),
-        0 0 18px rgba(25, 208, 200, 0.85);
-}
+    #map::after {
+        content: "";
 
-/* =========================================================
-   ACCURACY CIRCLE
-========================================================= */
+        position: absolute;
 
-.accuracy-circle {
-    background: rgba(25, 208, 200, 0.10);
-    border: 1px solid rgba(25, 208, 200, 0.35);
-}
+        inset: 0;
 
-/* =========================================================
-   RECORD BUTTON
-========================================================= */
+        pointer-events: none;
 
-#recordButton {
-    position: fixed;
+        z-index: 500;
 
-    left: 50%;
-    bottom: calc(26px + env(safe-area-inset-bottom));
+        background:
+            linear-gradient(
+                rgba(0, 15, 22, 0.30),
+                rgba(0, 8, 13, 0.42)
+            );
 
-    transform: translateX(-50%);
+        mix-blend-mode: multiply;
+    }
 
-    width: 82px;
-    height: 82px;
 
-    border: none;
-    outline: none;
+    /* =========================================
+       مؤشر التسجيل العلوي
+    ========================================= */
 
-    border-radius: 50%;
+    .tracking-indicator {
 
-    background: rgba(5, 10, 12, 0.88);
+        position: fixed;
 
-    border: 2px solid rgba(255,255,255,0.88);
+        top:
+            calc(18px + env(safe-area-inset-top));
 
-    box-shadow:
-        0 8px 30px rgba(0,0,0,0.45),
-        0 0 0 7px rgba(0,0,0,0.22);
+        right: 18px;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+        width: 13px;
+        height: 13px;
 
-    z-index: 9999;
+        border-radius: 50%;
 
-    cursor: pointer;
+        background: rgba(255,255,255,0.25);
 
-    transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease;
-}
+        border:
+            2px solid rgba(255,255,255,0.45);
 
-#recordButton:active {
-    transform: translateX(-50%) scale(0.92);
-}
+        z-index: 1500;
 
-/* الحلقة البيضاء الداخلية */
+        transition:
+            all 0.3s ease;
+    }
 
-.record-inner-ring {
-    width: 62px;
-    height: 62px;
 
-    border-radius: 50%;
+    .tracking-indicator.active {
 
-    background: #ffffff;
+        background: #00ff88;
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+        border-color: #00ff88;
 
-    box-shadow:
-        0 2px 12px rgba(0,0,0,0.35);
-}
-
-/* الدائرة الحمراء */
-
-.record-core {
-    width: 43px;
-    height: 43px;
-
-    border-radius: 50%;
-
-    background: #ff3045;
-
-    box-shadow:
-        0 0 0 0 rgba(255,48,69,0.65),
-        0 0 18px rgba(255,48,69,0.45);
-
-    transition:
-        width 0.22s ease,
-        height 0.22s ease,
-        border-radius 0.22s ease,
-        box-shadow 0.22s ease;
-}
-
-/* =========================================================
-   RECORDING STATE
-========================================================= */
-
-#recordButton.recording {
-    border-color: rgba(255,255,255,0.95);
-
-    box-shadow:
-        0 8px 30px rgba(0,0,0,0.5),
-        0 0 0 7px rgba(255,48,69,0.08),
-        0 0 25px rgba(255,48,69,0.20);
-}
-
-/*
-   أثناء التسجيل تتحول الدائرة
-   إلى مربع مثل زر تسجيل الفيديو.
-*/
-
-#recordButton.recording .record-core {
-    width: 25px;
-    height: 25px;
-
-    border-radius: 6px;
-
-    box-shadow:
-        0 0 0 0 rgba(255,48,69,0.65),
-        0 0 18px rgba(255,48,69,0.65);
-
-    animation: recordingPulse 1.5s infinite;
-}
-
-@keyframes recordingPulse {
-
-    0% {
         box-shadow:
-            0 0 0 0 rgba(255,48,69,0.55),
-            0 0 15px rgba(255,48,69,0.35);
+            0 0 0 4px rgba(0,255,136,0.20),
+            0 0 20px rgba(0,255,136,0.75);
+
+        animation:
+            indicatorPulse 1.4s infinite;
     }
 
-    60% {
-        box-shadow:
-            0 0 0 12px rgba(255,48,69,0),
-            0 0 22px rgba(255,48,69,0.55);
+
+    @keyframes indicatorPulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.25);
+        }
     }
 
-    100% {
-        box-shadow:
-            0 0 0 0 rgba(255,48,69,0),
-            0 0 15px rgba(255,48,69,0.35);
-    }
-}
 
-/* =========================================================
-   RECORDING INDICATOR
-========================================================= */
+    /* =========================================
+       زر التسجيل - مثل الكاميرا
+    ========================================= */
 
-#recordingIndicator {
-    position: fixed;
+    .record-button {
 
-    top: calc(18px + env(safe-area-inset-top));
-    right: 18px;
+        position: fixed;
 
-    z-index: 9999;
+        left: 50%;
 
-    display: none;
+        bottom:
+            calc(28px + env(safe-area-inset-bottom));
 
-    align-items: center;
-    gap: 8px;
+        transform:
+            translateX(-50%);
 
-    padding: 8px 12px;
-
-    border-radius: 999px;
-
-    background: rgba(4, 10, 12, 0.72);
-
-    border: 1px solid rgba(25,208,200,0.28);
-
-    backdrop-filter: blur(12px);
-
-    color: #ffffff;
-
-    font-size: 12px;
-    font-weight: 600;
-
-    box-shadow:
-        0 6px 25px rgba(0,0,0,0.3);
-}
-
-#recordingIndicator.active {
-    display: flex;
-}
-
-.recording-dot {
-    width: 8px;
-    height: 8px;
-
-    border-radius: 50%;
-
-    background: #ff3045;
-
-    box-shadow:
-        0 0 10px rgba(255,48,69,0.8);
-
-    animation: indicatorPulse 1.2s infinite;
-}
-
-@keyframes indicatorPulse {
-
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.35;
-        transform: scale(0.75);
-    }
-
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* =========================================================
-   PERMISSION MODAL
-========================================================= */
-
-#permissionModal {
-    position: fixed;
-    inset: 0;
-
-    z-index: 20000;
-
-    display: none;
-
-    align-items: center;
-    justify-content: center;
-
-    padding: 25px;
-
-    background: rgba(0,0,0,0.72);
-
-    backdrop-filter: blur(10px);
-}
-
-#permissionModal.show {
-    display: flex;
-}
-
-.permission-box {
-    width: min(360px, 100%);
-
-    padding: 25px 22px;
-
-    border-radius: 24px;
-
-    background: #11191c;
-
-    border: 1px solid rgba(25,208,200,0.25);
-
-    box-shadow:
-        0 25px 70px rgba(0,0,0,0.6);
-
-    text-align: center;
-
-    color: #ffffff;
-}
-
-.permission-icon {
-    width: 62px;
-    height: 62px;
-
-    margin: 0 auto 16px;
-
-    border-radius: 50%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: rgba(25,208,200,0.12);
-
-    border: 1px solid rgba(25,208,200,0.3);
-
-    color: #19d0c8;
-
-    font-size: 28px;
-}
-
-.permission-box h2 {
-    margin: 0 0 10px;
-
-    font-size: 20px;
-}
-
-.permission-box p {
-    margin: 0 0 20px;
-
-    color: #9aabad;
-
-    line-height: 1.7;
-
-    font-size: 14px;
-}
-
-#permissionButton {
-    width: 100%;
-
-    height: 48px;
-
-    border: none;
-
-    border-radius: 14px;
-
-    background: #19d0c8;
-
-    color: #041011;
-
-    font-size: 15px;
-
-    font-weight: 700;
-
-    cursor: pointer;
-}
-
-/* =========================================================
-   ERROR TOAST
-========================================================= */
-
-#errorToast {
-    position: fixed;
-
-    left: 50%;
-
-    bottom: calc(
-        120px + env(safe-area-inset-bottom)
-    );
-
-    transform:
-        translateX(-50%)
-        translateY(20px);
-
-    z-index: 15000;
-
-    max-width: calc(100% - 40px);
-
-    padding: 12px 17px;
-
-    border-radius: 14px;
-
-    background: rgba(15, 20, 22, 0.94);
-
-    border: 1px solid rgba(255,70,80,0.3);
-
-    color: #ffffff;
-
-    font-size: 13px;
-
-    text-align: center;
-
-    opacity: 0;
-
-    pointer-events: none;
-
-    transition:
-        opacity 0.25s ease,
-        transform 0.25s ease;
-
-    box-shadow:
-        0 10px 35px rgba(0,0,0,0.45);
-}
-
-#errorToast.show {
-    opacity: 1;
-
-    transform:
-        translateX(-50%)
-        translateY(0);
-}
-
-/* =========================================================
-   LOCATION LOADING
-========================================================= */
-
-#loadingLocation {
-    position: fixed;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%, -50%);
-
-    z-index: 9000;
-
-    padding: 13px 18px;
-
-    border-radius: 999px;
-
-    background: rgba(5,10,12,0.80);
-
-    border: 1px solid rgba(25,208,200,0.25);
-
-    color: #ffffff;
-
-    font-size: 13px;
-
-    backdrop-filter: blur(12px);
-
-    display: none;
-}
-
-#loadingLocation.show {
-    display: block;
-}
-
-/* =========================================================
-   HIDE DEFAULT ROTATE CONTROL
-========================================================= */
-
-.leaflet-rotate-control {
-    display: none !important;
-}
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (max-width: 600px) {
-
-    #recordButton {
         width: 78px;
         height: 78px;
+
+        padding: 0;
+
+        border: none;
+
+        border-radius: 50%;
+
+        background:
+            rgba(0, 0, 0, 0.55);
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        z-index: 2000;
+
+        cursor: pointer;
+
+        -webkit-tap-highlight-color:
+            transparent;
+
+        user-select: none;
+
+        touch-action: manipulation;
+
+        /*
+           حلقة خارجية
+        */
+
+        box-shadow:
+            0 8px 30px rgba(0,0,0,0.55),
+            0 0 0 2px rgba(255,255,255,0.90),
+            0 0 0 5px rgba(0,0,0,0.35);
+
+        transition:
+            transform 0.18s ease,
+            box-shadow 0.25s ease;
     }
 
-    .record-inner-ring {
-        width: 59px;
-        height: 59px;
+
+    /* =========================================
+       الدائرة البيضاء الداخلية
+    ========================================= */
+
+    .record-button::before {
+
+        content: "";
+
+        position: absolute;
+
+        width: 62px;
+        height: 62px;
+
+        border-radius: 50%;
+
+        background: #ffffff;
+
+        box-shadow:
+            inset 0 0 0 1px
+            rgba(0,0,0,0.08);
+
+        transition:
+            transform 0.22s ease;
     }
 
-    .record-core {
-        width: 41px;
-        height: 41px;
+
+    /* =========================================
+       زر أحمر داخلي
+    ========================================= */
+
+    .record-icon {
+
+        position: relative;
+
+        z-index: 2;
+
+        width: 46px;
+        height: 46px;
+
+        border-radius: 50%;
+
+        background: #ff3040;
+
+        box-shadow:
+            0 2px 10px
+            rgba(255,48,64,0.45);
+
+        transition:
+            width 0.22s ease,
+            height 0.22s ease,
+            border-radius 0.22s ease,
+            background 0.22s ease,
+            transform 0.22s ease;
     }
 
-    #recordButton.recording .record-core {
-        width: 24px;
-        height: 24px;
+
+    /* =========================================
+       الضغط
+    ========================================= */
+
+    .record-button:active {
+
+        transform:
+            translateX(-50%)
+            scale(0.92);
     }
-}
+
+
+    /* =========================================
+       حالة التسجيل
+    ========================================= */
+
+    .record-button.recording {
+
+        box-shadow:
+            0 8px 35px rgba(0,0,0,0.6),
+            0 0 0 2px rgba(255,255,255,0.95),
+            0 0 0 5px rgba(255,48,64,0.30),
+            0 0 30px rgba(255,48,64,0.45);
+
+        animation:
+            recordGlow 1.6s infinite;
+    }
+
+
+    @keyframes recordGlow {
+
+        0%,
+        100% {
+
+            box-shadow:
+                0 8px 35px rgba(0,0,0,0.6),
+                0 0 0 2px rgba(255,255,255,0.95),
+                0 0 0 5px rgba(255,48,64,0.25),
+                0 0 20px rgba(255,48,64,0.35);
+        }
+
+        50% {
+
+            box-shadow:
+                0 8px 35px rgba(0,0,0,0.6),
+                0 0 0 2px rgba(255,255,255,0.95),
+                0 0 0 8px rgba(255,48,64,0.15),
+                0 0 35px rgba(255,48,64,0.60);
+        }
+    }
+
+
+    /*
+       أثناء التسجيل يتحول الأحمر
+       من دائرة إلى مربع
+    */
+
+    .record-button.recording
+    .record-icon {
+
+        width: 25px;
+        height: 25px;
+
+        border-radius: 6px;
+
+        background: #ff3040;
+
+        transform: scale(1.05);
+    }
+
+
+    /* =========================================
+       رسالة الموقع
+    ========================================= */
+
+    .location-message {
+
+        position: fixed;
+
+        top: 50%;
+        left: 50%;
+
+        transform:
+            translate(-50%, -50%);
+
+        width: min(
+            calc(100% - 40px),
+            390px
+        );
+
+        padding: 28px 24px;
+
+        background:
+            rgba(5, 13, 17, 0.97);
+
+        border:
+            1px solid
+            rgba(0,217,255,0.30);
+
+        border-radius: 24px;
+
+        box-shadow:
+            0 25px 80px
+            rgba(0,0,0,0.75),
+            0 0 40px
+            rgba(0,217,255,0.08);
+
+        z-index: 5000;
+
+        text-align: center;
+
+        display: none;
+    }
+
+
+    .location-message.show {
+        display: block;
+    }
+
+
+    .location-icon {
+
+        font-size: 44px;
+
+        margin-bottom: 14px;
+    }
+
+
+    .location-title {
+
+        color: #fff;
+
+        font-size: 20px;
+
+        font-weight: 700;
+
+        margin-bottom: 10px;
+    }
+
+
+    .location-text {
+
+        color: #9aaeb3;
+
+        font-size: 14px;
+
+        line-height: 1.8;
+
+        margin-bottom: 20px;
+    }
+
+
+    .location-button {
+
+        border: none;
+
+        padding: 12px 28px;
+
+        border-radius: 30px;
+
+        background:
+            linear-gradient(
+                135deg,
+                #00e5ff,
+                #00aeca
+            );
+
+        color: #001014;
+
+        font-family: inherit;
+
+        font-size: 15px;
+
+        font-weight: 700;
+
+        cursor: pointer;
+    }
+
+
+    /* =========================================
+       Leaflet - الوضع الليلي
+    ========================================= */
+
+    .leaflet-container {
+
+        background:
+            #02080b;
+    }
+
+
+    /*
+       نجعل طبقة الخريطة أغمق
+       مع زيادة السماوي
+    */
+
+    .leaflet-tile {
+
+        filter:
+            brightness(0.48)
+            contrast(1.25)
+            saturate(1.35)
+            hue-rotate(8deg);
+    }
+
+
+    /*
+       عناصر Leaflet
+    */
+
+    .leaflet-control-zoom {
+
+        border: none !important;
+
+        box-shadow:
+            0 5px 20px
+            rgba(0,0,0,0.45) !important;
+
+        margin:
+            calc(18px + env(safe-area-inset-top))
+            12px 0 0 0 !important;
+    }
+
+
+    .leaflet-control-zoom a {
+
+        background:
+            rgba(4,18,23,0.85) !important;
+
+        color:
+            #00d9ff !important;
+
+        border-color:
+            rgba(0,217,255,0.22) !important;
+    }
+
+
+    .leaflet-control-zoom a:hover {
+
+        background:
+            rgba(0,217,255,0.18) !important;
+    }
+
+
+    .leaflet-control-attribution {
+
+        background:
+            rgba(0,8,12,0.55) !important;
+
+        color:
+            rgba(190,220,225,0.65) !important;
+
+        font-size:
+            9px !important;
+
+        border-radius:
+            6px !important;
+    }
+
+
+    .leaflet-control-attribution a {
+
+        color:
+            #00d9ff !important;
+    }
+
+
+    /* =========================================
+       الهاتف
+    ========================================= */
+
+    @media (max-width: 600px) {
+
+        .record-button {
+
+            width: 76px;
+            height: 76px;
+
+            bottom:
+                calc(
+                    24px +
+                    env(safe-area-inset-bottom)
+                );
+        }
+
+
+        .record-button::before {
+
+            width: 60px;
+            height: 60px;
+        }
+
+
+        .record-icon {
+
+            width: 44px;
+            height: 44px;
+        }
+
+
+        .record-button.recording
+        .record-icon {
+
+            width: 24px;
+            height: 24px;
+        }
+
+
+        .tracking-indicator {
+
+            top:
+                calc(
+                    16px +
+                    env(safe-area-inset-top)
+                );
+
+            right: 16px;
+        }
+    }
 
 </style>
-</head>
 
-<body>
-
-<!-- =======================================================
-     MAP
-======================================================= -->
+</head><body><!-- =========================================
+     الخريطة
+========================================= -->
 
 <div id="map"></div>
 
 
-<!-- =======================================================
-     RECORDING INDICATOR
-======================================================= -->
+<!-- =========================================
+     مؤشر التسجيل
+========================================= -->
 
-<div id="recordingIndicator">
+<div
+    class="tracking-indicator"
+    id="trackingIndicator">
+</div>
 
-    <span class="recording-dot"></span>
 
-    <span>جاري التسجيل</span>
+<!-- =========================================
+     رسالة الموقع
+========================================= -->
+
+<div
+    class="location-message"
+    id="locationMessage">
+
+    <div class="location-icon">
+        📍
+    </div>
+
+    <div
+        class="location-title"
+        id="locationTitle">
+
+        السماح بالوصول إلى الموقع
+
+    </div>
+
+    <div
+        class="location-text"
+        id="locationText">
+
+        نحتاج إلى الوصول إلى موقعك حتى نتمكن من تتبع تحركاتك على الخريطة.
+
+    </div>
+
+    <button
+        class="location-button"
+        id="locationButton"
+        onclick="requestLocation()">
+
+        السماح بالموقع
+
+    </button>
 
 </div>
 
 
-<!-- =======================================================
-     LOCATION LOADING
-======================================================= -->
-
-<div id="loadingLocation">
-    جاري تحديد موقعك...
-</div>
-
-
-<!-- =======================================================
-     RECORD BUTTON
-======================================================= -->
+<!-- =========================================
+     زر التسجيل
+========================================= -->
 
 <button
+    class="record-button"
     id="recordButton"
-    type="button"
-    aria-label="بدء التسجيل">
+    aria-label="التسجيل"
+    onclick="toggleTracking()">
 
-    <span class="record-inner-ring">
-        <span class="record-core"></span>
+    <span
+        class="record-icon"
+        id="recordIcon">
     </span>
 
 </button>
 
 
-<!-- =======================================================
-     PERMISSION MODAL
-======================================================= -->
-
-<div id="permissionModal">
-
-    <div class="permission-box">
-
-        <div class="permission-icon">
-            ◉
-        </div>
-
-        <h2>السماح بالموقع والاتجاه</h2>
-
-        <p>
-            يحتاج التطبيق إلى الوصول إلى موقعك واتجاه الهاتف
-            حتى يتمكن من تسجيل تحركاتك وتدوير الخريطة
-            بحيث يكون الاتجاه الذي تنظر إليه أمامك دائمًا.
-        </p>
-
-        <button
-            id="permissionButton"
-            type="button">
-            السماح والمتابعة
-        </button>
-
-    </div>
-
-</div>
-
-
-<!-- =======================================================
-     LEAFLET
-======================================================= -->
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- =======================================================
-     LEAFLET ROTATE
-======================================================= -->
-
-<script src="https://unpkg.com/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
+<!-- Leaflet -->
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
 
 
 <script>
 
-/* =========================================================
-   VARIABLES
-========================================================= */
+    /* =========================================
+       المتغيرات
+    ========================================= */
 
-let map = null;
+    let map = null;
 
-let watchId = null;
+    let watchId = null;
 
-let currentMarker = null;
+    let circles = [];
 
-let accuracyCircle = null;
+    let markers = [];
 
-let routeLine = null;
+    let isTracking = false;
 
-let routePoints = [];
+    let firstLocationReceived = false;
 
-let isRecording = false;
 
-let orientationActive = false;
+    /* =========================================
+       عناصر الصفحة
+    ========================================= */
 
-let orientationListener = null;
-
-let orientationAbsoluteListener = null;
-
-let lastHeading = null;
-
-let smoothedHeading = null;
-
-let firstLocationReceived = false;
-
-
-/* =========================================================
-   DEFAULT LOCATION
-========================================================= */
-
-/*
-   موقع افتراضي فقط إلى أن يتم تحديد موقع الهاتف.
-*/
-
-const DEFAULT_LOCATION = [
-    25.2048,
-    55.2708
-];
-
-
-/* =========================================================
-   DOM
-========================================================= */
-
-const recordButton =
-    document.getElementById("recordButton");
-
-const recordingIndicator =
-    document.getElementById("recordingIndicator");
-
-const permissionModal =
-    document.getElementById("permissionModal");
-
-const permissionButton =
-    document.getElementById("permissionButton");
-
-const errorToast =
-    document.getElementById("errorToast");
-
-const loadingLocation =
-    document.getElementById("loadingLocation");
-
-
-/* =========================================================
-   MAP INITIALIZATION
-========================================================= */
-
-map = L.map("map", {
-
-    zoomControl: false,
-
-    attributionControl: true,
-
-    /*
-       تفعيل دوران الخريطة.
-    */
-    rotate: true,
-
-    /*
-       لا نريد دوران الخريطة بإصبعين
-       لأننا نستخدم بوصلة الهاتف.
-    */
-    touchRotate: false,
-
-    dragRotate: false,
-
-    shiftKeyRotate: false,
-
-    rotateClockwise: true,
-
-    bearing: 0,
-
-    /*
-       منع تكبير الصفحة عند استخدام الإيماءات.
-    */
-    preventPageGestures: true
-
-}).setView(
-    DEFAULT_LOCATION,
-    15
-);
-
-
-/* =========================================================
-   TILE LAYER
-========================================================= */
-
-L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {
-        maxZoom: 20,
-
-        minZoom: 2,
-
-        attribution:
-            '&copy; OpenStreetMap contributors',
-
-        updateWhenIdle: false,
-
-        keepBuffer: 4
-    }
-).addTo(map);
-
-
-/* =========================================================
-   USER LOCATION ICON
-========================================================= */
-
-const userIcon = L.divIcon({
-
-    className: "",
-
-    html: `
-        <div class="user-location-marker">
-            <div class="user-location-dot"></div>
-        </div>
-    `,
-
-    iconSize: [24, 24],
-
-    iconAnchor: [12, 12]
-});
-
-
-/* =========================================================
-   ERROR MESSAGE
-========================================================= */
-
-let errorTimer = null;
-
-function showError(message) {
-
-    clearTimeout(errorTimer);
-
-    errorToast.textContent = message;
-
-    errorToast.classList.add("show");
-
-    errorTimer = setTimeout(() => {
-
-        errorToast.classList.remove("show");
-
-    }, 4500);
-}
-
-
-/* =========================================================
-   LOADING
-========================================================= */
-
-function showLoading() {
-    loadingLocation.classList.add("show");
-}
-
-function hideLoading() {
-    loadingLocation.classList.remove("show");
-}
-
-
-/* =========================================================
-   DISTANCE
-========================================================= */
-
-function distanceBetween(lat1, lon1, lat2, lon2) {
-
-    const R = 6371000;
-
-    const toRad =
-        Math.PI / 180;
-
-    const dLat =
-        (lat2 - lat1) * toRad;
-
-    const dLon =
-        (lon2 - lon1) * toRad;
-
-    const a =
-        Math.sin(dLat / 2) *
-        Math.sin(dLat / 2) +
-
-        Math.cos(lat1 * toRad) *
-        Math.cos(lat2 * toRad) *
-
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c =
-        2 *
-        Math.atan2(
-            Math.sqrt(a),
-            Math.sqrt(1 - a)
+    const recordButton =
+        document.getElementById(
+            "recordButton"
         );
 
-    return R * c;
-}
+    const trackingIndicator =
+        document.getElementById(
+            "trackingIndicator"
+        );
+
+    const locationMessage =
+        document.getElementById(
+            "locationMessage"
+        );
+
+    const locationTitle =
+        document.getElementById(
+            "locationTitle"
+        );
+
+    const locationText =
+        document.getElementById(
+            "locationText"
+        );
+
+    const locationButton =
+        document.getElementById(
+            "locationButton"
+        );
 
 
-/* =========================================================
-   CREATE / UPDATE LOCATION
-========================================================= */
+    /* =========================================
+       إنشاء الخريطة
+    ========================================= */
 
-function updateLocation(position) {
+    function initMap(
+        lat = 25.2048,
+        lng = 55.2708
+    ) {
 
-    const lat =
-        position.coords.latitude;
-
-    const lng =
-        position.coords.longitude;
-
-    const accuracy =
-        position.coords.accuracy || 20;
-
-    const latLng =
-        [lat, lng];
+        if (map !== null) {
+            return;
+        }
 
 
-    hideLoading();
-
-
-    /* -----------------------------------------------------
-       Marker
-    ----------------------------------------------------- */
-
-    if (!currentMarker) {
-
-        currentMarker =
-            L.marker(
-                latLng,
+        map =
+            L.map(
+                "map",
                 {
-                    icon: userIcon,
-                    zIndexOffset: 1000
+
+                    zoomControl: true,
+
+                    attributionControl: true,
+
+                    zoomAnimation: true,
+
+                    fadeAnimation: true
+
                 }
-            ).addTo(map);
+            ).setView(
+                [lat, lng],
+                15
+            );
 
-    } else {
 
-        currentMarker.setLatLng(latLng);
+        /* خريطة OpenStreetMap */
 
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+
+                maxZoom: 19
+
+            }
+        ).addTo(map);
+
+
+        setTimeout(
+            function() {
+
+                map.invalidateSize();
+
+            },
+            300
+        );
     }
 
 
-    /* -----------------------------------------------------
-       Accuracy Circle
-    ----------------------------------------------------- */
+    /* =========================================
+       رسالة الموقع
+    ========================================= */
 
-    if (!accuracyCircle) {
+    function showLocationMessage(
+        title,
+        text,
+        buttonText = "حاول مرة أخرى"
+    ) {
 
-        accuracyCircle =
-            L.circle(
-                latLng,
-                {
-                    radius: accuracy,
+        locationTitle.textContent =
+            title;
 
-                    className:
-                        "accuracy-circle",
+        locationText.textContent =
+            text;
 
-                    color: "#19d0c8",
+        locationButton.textContent =
+            buttonText;
 
-                    weight: 1,
-
-                    fillColor: "#19d0c8",
-
-                    fillOpacity: 0.08
-                }
-            ).addTo(map);
-
-    } else {
-
-        accuracyCircle.setLatLng(latLng);
-
-        accuracyCircle.setRadius(accuracy);
-
+        locationMessage.classList.add(
+            "show"
+        );
     }
 
 
-    /* -----------------------------------------------------
-       Route
-    ----------------------------------------------------- */
+    function hideLocationMessage() {
 
-    if (isRecording) {
+        locationMessage.classList.remove(
+            "show"
+        );
+    }
 
-        const lastPoint =
-            routePoints[
-                routePoints.length - 1
-            ];
+
+    /* =========================================
+       طلب الموقع
+    ========================================= */
+
+    function requestLocation() {
+
+        if (!navigator.geolocation) {
+
+            showLocationMessage(
+
+                "المتصفح لا يدعم الموقع",
+
+                "المتصفح الحالي لا يدعم تحديد الموقع.",
+
+                "حسنًا"
+
+            );
+
+            return;
+        }
+
 
         /*
-           لا نضيف نقاطًا متقاربة جدًا
-           لتقليل عدد النقاط.
+           تحديد الموقع يحتاج HTTPS
         */
 
-        if (!lastPoint) {
+        const isSecure =
+            window.isSecureContext ||
+            location.hostname === "localhost" ||
+            location.hostname === "127.0.0.1";
 
-            routePoints.push(latLng);
 
-        } else {
+        if (!isSecure) {
 
-            const distance =
-                distanceBetween(
-                    lastPoint[0],
-                    lastPoint[1],
+            showLocationMessage(
+
+                "الاتصال غير آمن",
+
+                "تحديد الموقع يحتاج إلى HTTPS. لا تفتح ملف HTML مباشرة من الهاتف، بل شغّله من رابط HTTPS.",
+
+                "فهمت"
+
+            );
+
+            return;
+        }
+
+
+        locationButton.disabled =
+            true;
+
+        locationButton.textContent =
+            "جاري تحديد الموقع...";
+
+
+        navigator.geolocation.getCurrentPosition(
+
+            function(position) {
+
+                const lat =
+                    position.coords.latitude;
+
+                const lng =
+                    position.coords.longitude;
+
+
+                initMap(
                     lat,
                     lng
                 );
 
-            if (distance >= 2) {
 
-                routePoints.push(latLng);
-
-            }
-
-        }
+                map.setView(
+                    [lat, lng],
+                    17
+                );
 
 
-        if (!routeLine) {
-
-            routeLine =
-                L.polyline(
-                    routePoints,
-                    {
-                        color: "#19d0c8",
-
-                        weight: 5,
-
-                        opacity: 0.88,
-
-                        lineCap: "round",
-
-                        lineJoin: "round"
-                    }
-                ).addTo(map);
-
-        } else {
-
-            routeLine.setLatLngs(
-                routePoints
-            );
-
-        }
-
-    }
+                hideLocationMessage();
 
 
-    /* -----------------------------------------------------
-       First Location
-    ----------------------------------------------------- */
+                locationButton.disabled =
+                    false;
 
-    if (!firstLocationReceived) {
+                locationButton.textContent =
+                    "حاول مرة أخرى";
+            },
 
-        firstLocationReceived = true;
 
-        map.setView(
-            latLng,
-            17,
+            function(error) {
+
+                locationButton.disabled =
+                    false;
+
+                locationButton.textContent =
+                    "حاول مرة أخرى";
+
+
+                handleLocationError(
+                    error
+                );
+
+            },
+
+
             {
-                animate: true
-            }
-        );
 
-    }
-
-}
-
-
-/* =========================================================
-   GEOLOCATION ERROR
-========================================================= */
-
-function locationError(error) {
-
-    hideLoading();
-
-    let message =
-        "تعذر الحصول على موقعك.";
-
-    switch (error.code) {
-
-        case error.PERMISSION_DENIED:
-
-            message =
-                "تم رفض الوصول إلى الموقع. فعّل إذن الموقع من إعدادات المتصفح.";
-
-            break;
-
-        case error.POSITION_UNAVAILABLE:
-
-            message =
-                "موقعك غير متاح حاليًا. تأكد من تشغيل GPS.";
-
-            break;
-
-        case error.TIMEOUT:
-
-            message =
-                "انتهى وقت تحديد الموقع. حاول مرة أخرى.";
-
-            break;
-
-    }
-
-    showError(message);
-}
-
-
-/* =========================================================
-   START GPS
-========================================================= */
-
-function startLocationTracking() {
-
-    if (!navigator.geolocation) {
-
-        showError(
-            "هذا المتصفح لا يدعم تحديد الموقع."
-        );
-
-        return;
-
-    }
-
-
-    showLoading();
-
-
-    /*
-       watchPosition يستمر في تحديث الموقع
-       أثناء الحركة.
-    */
-
-    watchId =
-        navigator.geolocation.watchPosition(
-            updateLocation,
-            locationError,
-            {
                 enableHighAccuracy: true,
 
-                maximumAge: 1000,
+                timeout: 15000,
 
-                timeout: 15000
+                maximumAge: 0
+
             }
         );
-
-}
-
-
-/* =========================================================
-   STOP GPS
-========================================================= */
-
-function stopLocationTracking() {
-
-    if (watchId !== null) {
-
-        navigator.geolocation.clearWatch(
-            watchId
-        );
-
-        watchId = null;
-    }
-
-}
-
-
-/* =========================================================
-   ANGLE NORMALIZATION
-========================================================= */
-
-function normalizeAngle(angle) {
-
-    angle = angle % 360;
-
-    if (angle < 0) {
-        angle += 360;
-    }
-
-    return angle;
-}
-
-
-/* =========================================================
-   SHORTEST ANGLE DIFFERENCE
-========================================================= */
-
-function angleDifference(
-    from,
-    to
-) {
-
-    return (
-        (to - from + 540) %
-        360
-    ) - 180;
-
-}
-
-
-/* =========================================================
-   SMOOTH HEADING
-========================================================= */
-
-function smoothHeading(
-    oldHeading,
-    newHeading,
-    factor = 0.20
-) {
-
-    const difference =
-        angleDifference(
-            oldHeading,
-            newHeading
-        );
-
-    return normalizeAngle(
-        oldHeading +
-        difference * factor
-    );
-
-}
-
-
-/* =========================================================
-   GET DEVICE HEADING
-========================================================= */
-
-function getHeadingFromEvent(event) {
-
-    /*
-       أجهزة Apple / Safari
-       توفر webkitCompassHeading
-       وهو أفضل مصدر للبوصلة.
-    */
-
-    if (
-        typeof event.webkitCompassHeading ===
-        "number" &&
-        !Number.isNaN(
-            event.webkitCompassHeading
-        )
-    ) {
-
-        return normalizeAngle(
-            event.webkitCompassHeading
-        );
-
     }
 
 
-    /*
-       Absolute orientation
-       في المتصفحات التي توفر alpha
-       كاتجاه مطلق.
-    */
-
-    if (
-        event.absolute === true &&
-        typeof event.alpha === "number"
-    ) {
-
-        let heading =
-            360 - event.alpha;
-
-
-        /*
-           تصحيح اتجاه الشاشة.
-        */
-
-        const screenAngle =
-            (
-                screen.orientation &&
-                typeof screen.orientation.angle ===
-                "number"
-            )
-                ? screen.orientation.angle
-                : 0;
-
-
-        heading += screenAngle;
-
-
-        return normalizeAngle(
-            heading
-        );
-
-    }
-
-
-    return null;
-}
-
-
-/* =========================================================
-   HANDLE ORIENTATION
-========================================================= */
-
-function handleOrientation(event) {
-
-    if (!isRecording) {
-        return;
-    }
-
-
-    const heading =
-        getHeadingFromEvent(event);
-
-
-    if (heading === null) {
-        return;
-    }
-
-
-    /*
-       أول قراءة.
-    */
-
-    if (smoothedHeading === null) {
-
-        smoothedHeading =
-            heading;
-
-    } else {
-
-        smoothedHeading =
-            smoothHeading(
-                smoothedHeading,
-                heading,
-                0.18
-            );
-
-    }
-
-
-    lastHeading =
-        smoothedHeading;
-
-
-    /*
-       setHeading يجعل الاتجاه
-       الذي يحمله الهاتف أمام المستخدم
-       يظهر في أعلى الشاشة.
-
-       الخريطة تتحرك بسلاسة.
-    */
-
-    if (
-        map &&
-        typeof map.setHeading ===
-        "function"
-    ) {
-
-        map.setHeading(
-            smoothedHeading,
-            {
-                ease: 0.18,
-
-                deadzone: 0.7
-            }
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   REQUEST ORIENTATION PERMISSION
-========================================================= */
-
-async function requestOrientationPermission() {
-
-    /*
-       إذا كان المتصفح لا يوفر
-       requestPermission
-       نبدأ مباشرة.
-    */
-
-    if (
-        typeof DeviceOrientationEvent ===
-        "undefined"
-    ) {
-
-        return true;
-
-    }
-
-
-    if (
-        typeof DeviceOrientationEvent.requestPermission !==
-        "function"
-    ) {
-
-        return true;
-
-    }
-
-
-    try {
-
-        /*
-           true = نحتاج absolute orientation
-           حتى نستطيع استخدام البوصلة.
-        */
-
-        let permission;
-
-        try {
-
-            permission =
-                await DeviceOrientationEvent
-                    .requestPermission(true);
-
-        } catch (e) {
-
-            /*
-               بعض المتصفحات لا تقبل الوسيط.
-            */
-
-            permission =
-                await DeviceOrientationEvent
-                    .requestPermission();
-
-        }
-
-
-        if (permission === "granted") {
-
-            return true;
-
-        }
-
-
-        showError(
-            "لم يتم السماح باستخدام بوصلة الهاتف، لذلك لن تدور الخريطة مع اتجاه الهاتف."
-        );
-
-        return false;
-
-    } catch (error) {
+    /* =========================================
+       أخطاء الموقع
+    ========================================= */
+
+    function handleLocationError(error) {
 
         console.error(
-            "Orientation permission error:",
+            "Geolocation:",
             error
         );
 
-        return false;
 
-    }
+        switch (error.code) {
 
-}
+            case error.PERMISSION_DENIED:
 
+                showLocationMessage(
 
-/* =========================================================
-   START ORIENTATION
-========================================================= */
+                    "تم رفض الوصول للموقع",
 
-function startOrientation() {
+                    "فعّل صلاحية الموقع للمتصفح من إعدادات الهاتف، ثم اضغط حاول مرة أخرى.",
 
-    if (orientationActive) {
-        return;
-    }
+                    "حاول مرة أخرى"
 
+                );
 
-    if (
-        typeof DeviceOrientationEvent ===
-        "undefined"
-    ) {
-
-        showError(
-            "هذا الجهاز أو المتصفح لا يدعم بوصلة الهاتف."
-        );
-
-        return;
-
-    }
+                break;
 
 
-    orientationListener =
-        handleOrientation;
+            case error.POSITION_UNAVAILABLE:
 
-    orientationAbsoluteListener =
-        handleOrientation;
+                showLocationMessage(
 
+                    "الموقع غير متاح",
 
-    /*
-       الاتجاه العادي.
-    */
+                    "تأكد من تشغيل خدمات الموقع وGPS في الهاتف ثم حاول مرة أخرى.",
 
-    window.addEventListener(
-        "deviceorientation",
-        orientationListener,
-        true
-    );
+                    "حاول مرة أخرى"
+
+                );
+
+                break;
 
 
-    /*
-       الاتجاه المطلق.
-       هذا هو الأفضل للبوصلة.
-    */
+            case error.TIMEOUT:
 
-    window.addEventListener(
-        "deviceorientationabsolute",
-        orientationAbsoluteListener,
-        true
-    );
+                showLocationMessage(
 
+                    "انتهت مهلة تحديد الموقع",
 
-    orientationActive = true;
+                    "تعذر الحصول على موقعك. حاول مرة أخرى في مكان مفتوح.",
 
-}
+                    "حاول مرة أخرى"
+
+                );
+
+                break;
 
 
-/* =========================================================
-   STOP ORIENTATION
-========================================================= */
+            default:
 
-function stopOrientation() {
+                showLocationMessage(
 
-    if (!orientationActive) {
-        return;
+                    "تعذر تحديد الموقع",
+
+                    "حدث خطأ أثناء الحصول على موقعك.",
+
+                    "حاول مرة أخرى"
+
+                );
+        }
     }
 
 
-    if (orientationListener) {
+    /* =========================================
+       تشغيل / إيقاف التسجيل
+    ========================================= */
 
-        window.removeEventListener(
-            "deviceorientation",
-            orientationListener,
-            true
-        );
+    function toggleTracking() {
 
+        if (isTracking) {
+
+            stopTracking();
+
+        } else {
+
+            startTracking();
+
+        }
     }
 
 
-    if (orientationAbsoluteListener) {
+    /* =========================================
+       بدء التسجيل
+    ========================================= */
 
-        window.removeEventListener(
-            "deviceorientationabsolute",
-            orientationAbsoluteListener,
-            true
-        );
+    function startTracking() {
 
-    }
+        if (isTracking) {
+            return;
+        }
 
 
-    orientationListener = null;
+        if (!navigator.geolocation) {
 
-    orientationAbsoluteListener = null;
+            showLocationMessage(
 
-    orientationActive = false;
+                "الموقع غير مدعوم",
 
-    lastHeading = null;
+                "المتصفح لا يدعم تحديد الموقع.",
 
-    smoothedHeading = null;
+                "حسنًا"
 
+            );
 
-    /*
-       إيقاف Heading-Up.
-    */
+            return;
+        }
 
-    if (
-        map &&
-        typeof map.stopHeadingUp ===
-        "function"
-    ) {
 
-        map.stopHeadingUp();
+        if (map === null) {
 
-    }
-
-
-    /*
-       إعادة الخريطة إلى الشمال.
-    */
-
-    if (
-        map &&
-        typeof map.setBearing ===
-        "function"
-    ) {
-
-        map.setBearing(0);
-
-    }
-
-}
-
-
-/* =========================================================
-   START RECORDING
-========================================================= */
-
-async function startRecording() {
-
-    if (isRecording) {
-        return;
-    }
-
-
-    /*
-       مهم جدًا:
-
-       نطلب صلاحية البوصلة هنا
-       لأن بعض الأجهزة لا تسمح بطلبها
-       إلا أثناء ضغطة المستخدم.
-    */
-
-    const orientationPermission =
-        await requestOrientationPermission();
-
-
-    /*
-       حتى لو لم يسمح المستخدم بالبوصلة،
-       نستطيع الاستمرار في تسجيل GPS.
-    */
-
-    startOrientation();
-
-    startLocationTracking();
-
-
-    isRecording = true;
-
-
-    recordButton.classList.add(
-        "recording"
-    );
-
-
-    recordButton.setAttribute(
-        "aria-label",
-        "إيقاف التسجيل"
-    );
-
-
-    recordingIndicator.classList.add(
-        "active"
-    );
-
-
-    /*
-       يبدأ Heading-Up بعد السماح.
-    */
-
-    if (
-        !orientationPermission
-    ) {
-
-        /*
-           لا نوقف التسجيل.
-           فقط الخريطة لن تدور إذا لم
-           يسمح المستخدم بالبوصلة.
-        */
-
-    }
-
-}
-
-
-/* =========================================================
-   STOP RECORDING
-========================================================= */
-
-function stopRecording() {
-
-    if (!isRecording) {
-        return;
-    }
-
-
-    isRecording = false;
-
-
-    stopLocationTracking();
-
-    stopOrientation();
-
-
-    recordButton.classList.remove(
-        "recording"
-    );
-
-
-    recordButton.setAttribute(
-        "aria-label",
-        "بدء التسجيل"
-    );
-
-
-    recordingIndicator.classList.remove(
-        "active"
-    );
-
-
-    hideLoading();
-
-}
-
-
-/* =========================================================
-   TOGGLE RECORDING
-========================================================= */
-
-async function toggleRecording() {
-
-    if (isRecording) {
-
-        stopRecording();
-
-    } else {
-
-        await startRecording();
-
-    }
-
-}
-
-
-/* =========================================================
-   RECORD BUTTON
-========================================================= */
-
-recordButton.addEventListener(
-    "click",
-    toggleRecording,
-    {
-        passive: false
-    }
-);
-
-
-/* =========================================================
-   PERMISSION BUTTON
-========================================================= */
-
-permissionButton.addEventListener(
-    "click",
-    async () => {
-
-        permissionModal.classList.remove(
-            "show"
-        );
-
-        await startRecording();
-
-    }
-);
-
-
-/* =========================================================
-   CHECK SECURE CONTEXT
-========================================================= */
-
-function checkSecurity() {
-
-    /*
-       الموقع يحتاج HTTPS في معظم
-       بيئات الهاتف الحديثة.
-    */
-
-    if (
-        location.protocol !== "https:" &&
-        location.hostname !== "localhost" &&
-        location.hostname !== "127.0.0.1"
-    ) {
-
-        console.warn(
-            "Geolocation / Device Orientation may require HTTPS."
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   PREVENT DOUBLE TAP ZOOM
-========================================================= */
-
-let lastTouchEnd = 0;
-
-document.addEventListener(
-    "touchend",
-    function(event) {
-
-        const now =
-            Date.now();
-
-        if (
-            now - lastTouchEnd <= 300
-        ) {
-
-            event.preventDefault();
+            initMap();
 
         }
 
-        lastTouchEnd = now;
 
-    },
-    {
-        passive: false
+        /*
+           إذا لم نحصل على إذن الموقع
+           نطلبه أولًا
+        */
+
+        const isSecure =
+            window.isSecureContext ||
+            location.hostname === "localhost" ||
+            location.hostname === "127.0.0.1";
+
+
+        if (!isSecure) {
+
+            showLocationMessage(
+
+                "الاتصال غير آمن",
+
+                "يجب تشغيل الموقع عبر HTTPS حتى يعمل تتبع الموقع.",
+
+                "فهمت"
+
+            );
+
+            return;
+        }
+
+
+        isTracking = true;
+
+        firstLocationReceived =
+            false;
+
+
+        /* تغيير شكل الزر */
+
+        recordButton.classList.add(
+            "recording"
+        );
+
+
+        /* تشغيل المؤشر */
+
+        trackingIndicator.classList.add(
+            "active"
+        );
+
+
+        /*
+           بدء مراقبة الموقع
+        */
+
+        watchId =
+            navigator.geolocation.watchPosition(
+
+                function(position) {
+
+                    const lat =
+                        position.coords.latitude;
+
+                    const lng =
+                        position.coords.longitude;
+
+                    const accuracy =
+                        position.coords.accuracy;
+
+
+                    /*
+                       تحريك الخريطة إلى
+                       أول نقطة فقط
+                    */
+
+                    if (!firstLocationReceived) {
+
+                        map.setView(
+                            [lat, lng],
+                            17
+                        );
+
+                        firstLocationReceived =
+                            true;
+                    }
+
+
+                    drawCircle(
+                        lat,
+                        lng,
+                        accuracy
+                    );
+
+
+                    addMarker(
+                        lat,
+                        lng
+                    );
+
+                },
+
+
+                function(error) {
+
+                    handleTrackingError(
+                        error
+                    );
+
+                },
+
+
+                {
+
+                    enableHighAccuracy: true,
+
+                    timeout: 15000,
+
+                    maximumAge: 2000
+
+                }
+            );
     }
-);
 
 
-/* =========================================================
-   PREVENT CONTEXT MENU
-========================================================= */
+    /* =========================================
+       خطأ أثناء التسجيل
+    ========================================= */
 
-document.addEventListener(
-    "contextmenu",
-    function(event) {
+    function handleTrackingError(error) {
 
-        event.preventDefault();
+        console.error(
+            "Tracking error:",
+            error
+        );
 
+
+        if (
+            error.code ===
+            error.PERMISSION_DENIED
+        ) {
+
+            stopTracking();
+
+
+            showLocationMessage(
+
+                "تم رفض صلاحية الموقع",
+
+                "فعّل صلاحية الموقع للمتصفح من إعدادات الهاتف ثم اضغط على زر التسجيل مرة أخرى.",
+
+                "حاول مرة أخرى"
+
+            );
+
+            return;
+        }
+
+
+        if (
+            error.code ===
+            error.POSITION_UNAVAILABLE
+        ) {
+
+            console.warn(
+                "الموقع غير متاح حاليًا"
+            );
+
+            return;
+        }
+
+
+        if (
+            error.code ===
+            error.TIMEOUT
+        ) {
+
+            console.warn(
+                "انتهت مهلة تحديد الموقع"
+            );
+
+            return;
+        }
     }
-);
 
 
-/* =========================================================
-   PREVENT TEXT SELECTION
-========================================================= */
+    /* =========================================
+       دائرة دقة الموقع
+    ========================================= */
 
-document.addEventListener(
-    "selectstart",
-    function(event) {
+    function drawCircle(
+        lat,
+        lng,
+        radius
+    ) {
 
-        event.preventDefault();
+        const circle =
+            L.circle(
+                [lat, lng],
+                {
 
+                    radius:
+                        radius || 50,
+
+                    color:
+                        "#00e5ff",
+
+                    fillColor:
+                        "#00cfff",
+
+                    fillOpacity:
+                        0.18,
+
+                    weight:
+                        2,
+
+                    opacity:
+                        0.85
+                }
+            ).addTo(map);
+
+
+        circles.push(
+            circle
+        );
     }
-);
 
 
-/* =========================================================
-   INITIALIZATION
-========================================================= */
+    /* =========================================
+       نقطة الموقع
+    ========================================= */
 
-checkSecurity();
+    function addMarker(
+        lat,
+        lng
+    ) {
+
+        const marker =
+            L.circleMarker(
+                [lat, lng],
+                {
+
+                    radius:
+                        5,
+
+                    color:
+                        "#ffffff",
+
+                    weight:
+                        2,
+
+                    fillColor:
+                        "#00d9ff",
+
+                    fillOpacity:
+                        1
+                }
+            ).addTo(map);
 
 
-/*
-   نبدأ بالخريطة فقط.
-   لا نطلب الموقع أو البوصلة إلا عند
-   الضغط على زر التسجيل.
-*/
+        markers.push(
+            marker
+        );
+    }
 
-console.log(
-    "Tracking map initialized."
-);
+
+    /* =========================================
+       إيقاف التسجيل
+    ========================================= */
+
+    function stopTracking() {
+
+        if (!isTracking) {
+            return;
+        }
+
+
+        if (watchId !== null) {
+
+            navigator.geolocation.clearWatch(
+                watchId
+            );
+
+            watchId = null;
+        }
+
+
+        isTracking = false;
+
+
+        /*
+           يرجع الزر إلى دائرة حمراء
+        */
+
+        recordButton.classList.remove(
+            "recording"
+        );
+
+
+        /*
+           إيقاف مؤشر التسجيل
+        */
+
+        trackingIndicator.classList.remove(
+            "active"
+        );
+    }
+
+
+    /* =========================================
+       تشغيل الصفحة
+    ========================================= */
+
+    window.addEventListener(
+        "load",
+        function() {
+
+            /*
+               إنشاء الخريطة
+            */
+
+            initMap();
+
+
+            /*
+               محاولة تحديد الموقع
+            */
+
+            if (
+                navigator.geolocation
+            ) {
+
+                requestLocation();
+
+            } else {
+
+                showLocationMessage(
+
+                    "الموقع غير مدعوم",
+
+                    "المتصفح الحالي لا يدعم تحديد الموقع.",
+
+                    "حسنًا"
+
+                );
+            }
+
+        }
+    );
+
+
+    /* =========================================
+       إصلاح حجم الخريطة
+    ========================================= */
+
+    window.addEventListener(
+        "resize",
+        function() {
+
+            if (map) {
+
+                map.invalidateSize();
+
+            }
+
+        }
+    );
 
 </script>
 
