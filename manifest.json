@@ -1,26 +1,26 @@
 {
-  "name": "تتبع التحركات",
-  "short_name": "التتبع",
-  "description": "تطبيق لتتبع مسارك وموقعك الحالي على الخريطة.",
+  "name": "Track Yourself",
+  "short_name": "Track",
+  "description": "تتبع مسارك وموقعك",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#071419",
-  "theme_color": "#071419",
+  "background_color": "#080c0e",
+  "theme_color": "#080c0e",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
     {
-      "src": "icon-192.svg",
+      "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.svg",
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
