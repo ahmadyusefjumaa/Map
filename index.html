@@ -14,7 +14,9 @@
 <title>تتبع التحركات</title>
 
 
-<!-- Leaflet -->
+<!-- =====================================================
+     LEAFLET
+===================================================== -->
 
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -27,8 +29,11 @@
 ========================================= */
 
 * {
+
     margin: 0;
+
     padding: 0;
+
     box-sizing: border-box;
 }
 
@@ -37,6 +42,7 @@ html,
 body {
 
     width: 100%;
+
     height: 100%;
 
     overflow: hidden;
@@ -157,6 +163,7 @@ body {
     border-color: #00ff88;
 
     box-shadow:
+
         0 0 0 4px
         rgba(0,255,136,0.20),
 
@@ -529,6 +536,14 @@ body {
 }
 
 
+.location-button:disabled {
+
+    opacity: 0.6;
+
+    cursor: default;
+}
+
+
 /* =========================================
    Leaflet - الوضع الليلي
 ========================================= */
@@ -539,11 +554,6 @@ body {
         #02080b;
 }
 
-
-/*
-   نجعل طبقة الخريطة أغمق
-   مع زيادة السماوي
-*/
 
 .leaflet-tile {
 
@@ -626,18 +636,27 @@ body {
 
 
 /* =========================================
-   شكل منطقة المسار
+   منطقة المسار السماوية
 ========================================= */
 
 /*
-   هذا هو المسار الجديد.
+   المنطقة التي تم المرور بها.
 
-   بدل الدوائر والنقاط،
-   يتم رسم شريط عريض شفاف
-   يمثل المنطقة التي مر بها المستخدم.
+   لا توجد نقاط عليها.
 */
 
 .tracked-area {
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================
+   نقطة الموقع الحالي
+========================================= */
+
+.current-location-dot {
 
     pointer-events: none;
 }
@@ -789,7 +808,9 @@ body {
 </button>
 
 
-<!-- Leaflet -->
+<!-- =========================================
+     LEAFLET
+========================================= -->
 
 <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
@@ -804,35 +825,57 @@ body {
 
 let map = null;
 
+
+/*
+   معرف مراقبة GPS
+*/
+
 let watchId = null;
 
+
+/*
+   هل التسجيل يعمل؟
+*/
+
 let isTracking = false;
+
+
+/*
+   هل وصلنا لأول موقع؟
+*/
 
 let firstLocationReceived = false;
 
 
 /*
-   نقاط المسار.
+   جميع نقاط المسار.
 
-   كل نقطة تحتوي:
-   [latitude, longitude]
+   تستخدم فقط لرسم المنطقة
+   السماوية التي تم المرور بها.
 */
 
 let routePoints = [];
 
 
 /*
-   طبقة المسار نفسها.
-
-   بدل إنشاء دائرة لكل نقطة،
-   لدينا خط واحد عريض وشفاف.
+   طبقة المنطقة السماوية.
 */
 
 let trackedArea = null;
 
 
 /*
-   آخر نقطة تم تسجيلها.
+   نقطة موقع المستخدم الحالية فقط.
+
+   لن يتم إنشاء نقاط جديدة.
+*/
+
+let currentLocationMarker = null;
+
+
+/*
+   آخر نقطة تم تسجيلها
+   في المسار.
 */
 
 let lastRoutePoint = null;
@@ -887,8 +930,15 @@ function initMap(
     lng = 55.2708
 ) {
 
+    /*
+       إذا كانت الخريطة موجودة
+       لا ننشئها مرة أخرى.
+    */
+
     if (map !== null) {
+
         return;
+
     }
 
 
@@ -913,7 +963,7 @@ function initMap(
 
 
     /* =====================================
-       خريطة OpenStreetMap
+       OpenStreetMap
     ===================================== */
 
     L.tileLayer(
@@ -933,12 +983,15 @@ function initMap(
 
 
     setTimeout(
+
         function() {
 
             map.invalidateSize();
 
         },
+
         300
+
     );
 
 }
@@ -1005,7 +1058,7 @@ function requestLocation() {
 
 
     /*
-       تحديد الموقع يحتاج HTTPS
+       تحديد الموقع يحتاج HTTPS.
     */
 
     const isSecure =
@@ -1059,6 +1112,16 @@ function requestLocation() {
             map.setView(
                 [lat, lng],
                 17
+            );
+
+
+            /*
+               إظهار موقع المستخدم الحالي.
+            */
+
+            updateCurrentLocation(
+                lat,
+                lng
             );
 
 
@@ -1209,7 +1272,9 @@ function toggleTracking() {
 function startTracking() {
 
     if (isTracking) {
+
         return;
+
     }
 
 
@@ -1226,6 +1291,7 @@ function startTracking() {
         );
 
         return;
+
     }
 
 
@@ -1237,8 +1303,7 @@ function startTracking() {
 
 
     /*
-       إذا لم نحصل على إذن الموقع
-       نطلبه أولًا.
+       التأكد من HTTPS.
     */
 
     const isSecure =
@@ -1260,12 +1325,13 @@ function startTracking() {
         );
 
         return;
+
     }
 
 
-    /*
-       بدء حالة التسجيل
-    */
+    /* =====================================
+       بدء جلسة تسجيل جديدة
+    ===================================== */
 
     isTracking = true;
 
@@ -1275,7 +1341,7 @@ function startTracking() {
 
 
     /*
-       تصفير المسار الجديد
+       تصفير نقاط المسار.
     */
 
     routePoints = [];
@@ -1285,8 +1351,10 @@ function startTracking() {
 
 
     /*
-       إذا كان هناك مسار قديم،
-       نحذفه عند بدء تسجيل جديد.
+       حذف المسار السابق فقط.
+
+       نقطة الموقع الحالية ستبقى
+       وسيتم تحديثها.
     */
 
     if (trackedArea !== null) {
@@ -1300,23 +1368,27 @@ function startTracking() {
     }
 
 
-    /* تغيير شكل الزر */
+    /* =====================================
+       شكل زر التسجيل
+    ===================================== */
 
     recordButton.classList.add(
         "recording"
     );
 
 
-    /* تشغيل المؤشر */
+    /* =====================================
+       مؤشر التسجيل
+    ===================================== */
 
     trackingIndicator.classList.add(
         "active"
     );
 
 
-    /*
-       بدء مراقبة الموقع
-    */
+    /* =====================================
+       مراقبة الموقع
+    ===================================== */
 
     watchId =
         navigator.geolocation.watchPosition(
@@ -1331,10 +1403,29 @@ function startTracking() {
                     position.coords.longitude;
 
 
-                /*
-                   تحريك الخريطة إلى
-                   أول نقطة فقط.
-                */
+                /* ---------------------------------
+                   تحديث نقطة الموقع الحالية فقط
+                --------------------------------- */
+
+                updateCurrentLocation(
+                    lat,
+                    lng
+                );
+
+
+                /* ---------------------------------
+                   تسجيل المنطقة التي تم المرور بها
+                --------------------------------- */
+
+                addRoutePoint(
+                    lat,
+                    lng
+                );
+
+
+                /* ---------------------------------
+                   تحريك الخريطة لأول موقع فقط
+                --------------------------------- */
 
                 if (!firstLocationReceived) {
 
@@ -1348,16 +1439,6 @@ function startTracking() {
                         true;
 
                 }
-
-
-                /*
-                   تسجيل المنطقة التي تم المرور بها.
-                */
-
-                addRoutePoint(
-                    lat,
-                    lng
-                );
 
             },
 
@@ -1387,6 +1468,71 @@ function startTracking() {
 
 
 /* =========================================
+   تحديث نقطة الموقع الحالية
+========================================= */
+
+function updateCurrentLocation(
+    lat,
+    lng
+) {
+
+    const position =
+        [lat, lng];
+
+
+    /*
+       إذا لم تكن نقطة الموقع موجودة،
+       ننشئها مرة واحدة فقط.
+    */
+
+    if (currentLocationMarker === null) {
+
+        currentLocationMarker =
+            L.circleMarker(
+
+                position,
+
+                {
+
+                    radius: 8,
+
+                    color: "#ffffff",
+
+                    weight: 3,
+
+                    fillColor: "#00d9ff",
+
+                    fillOpacity: 1,
+
+                    interactive: false,
+
+                    className:
+                        "current-location-dot"
+
+                }
+
+            ).addTo(map);
+
+
+    } else {
+
+        /*
+           لا ننشئ نقطة جديدة.
+
+           فقط نحرك النقطة القديمة
+           إلى الموقع الجديد.
+        */
+
+        currentLocationMarker.setLatLng(
+            position
+        );
+
+    }
+
+}
+
+
+/* =========================================
    تسجيل نقطة في المسار
 ========================================= */
 
@@ -1400,7 +1546,7 @@ function addRoutePoint(
 
 
     /*
-       أول نقطة
+       أول نقطة في المسار.
     */
 
     if (lastRoutePoint === null) {
@@ -1416,13 +1562,15 @@ function addRoutePoint(
 
         createTrackedArea();
 
+
         return;
+
     }
 
 
     /*
-       حساب المسافة بين آخر نقطة
-       والنقطة الجديدة.
+       حساب المسافة بين النقطة الحالية
+       وآخر نقطة مسجلة.
     */
 
     const distance =
@@ -1433,20 +1581,20 @@ function addRoutePoint(
 
 
     /*
-       تجاهل التحركات الصغيرة جدًا.
+       تجاهل اهتزاز GPS البسيط.
 
-       3 أمتار تعتبر حدًا مناسبًا
-       حتى لا نضيف مئات النقاط
-       بسبب اهتزاز GPS.
+       لن نسجل حركة أقل من 3 أمتار.
     */
 
     if (distance < 3) {
+
         return;
+
     }
 
 
     /*
-       إضافة النقطة.
+       إضافة النقطة الجديدة.
     */
 
     routePoints.push(
@@ -1459,7 +1607,7 @@ function addRoutePoint(
 
 
     /*
-       تحديث المنطقة الملونة.
+       تحديث المنطقة السماوية.
     */
 
     updateTrackedArea();
@@ -1468,7 +1616,7 @@ function addRoutePoint(
 
 
 /* =========================================
-   إنشاء منطقة المسار
+   إنشاء المنطقة السماوية
 ========================================= */
 
 function createTrackedArea() {
@@ -1477,21 +1625,25 @@ function createTrackedArea() {
         !map ||
         routePoints.length === 0
     ) {
+
         return;
+
     }
 
 
     /*
-       الخط العريض الشفاف هو المنطقة
-       التي تم المرور بها.
+       الخط هنا عريض وشفاف.
 
-       لا توجد نقاط.
-       لا توجد دوائر.
+       النتيجة البصرية:
+       المنطقة التي مررت بها تصبح
+       سماوية شفافة.
     */
 
     trackedArea =
         L.polyline(
+
             routePoints,
+
             {
 
                 className:
@@ -1504,7 +1656,7 @@ function createTrackedArea() {
                     32,
 
                 opacity:
-                    0.28,
+                    0.30,
 
                 lineCap:
                     "round",
@@ -1516,29 +1668,32 @@ function createTrackedArea() {
                     false
 
             }
+
         ).addTo(map);
 
 }
 
 
 /* =========================================
-   تحديث منطقة المسار
+   تحديث المنطقة السماوية
 ========================================= */
 
 function updateTrackedArea() {
 
     if (
-        !trackedArea ||
+        trackedArea === null ||
         routePoints.length === 0
     ) {
+
         return;
+
     }
 
 
     /*
-       نحدّث نفس المسار
-       بدل إنشاء عنصر جديد
-       مع كل GPS update.
+       تحديث نفس الطبقة.
+
+       لا ننشئ طبقة جديدة كل مرة.
     */
 
     trackedArea.setLatLngs(
@@ -1549,7 +1704,7 @@ function updateTrackedArea() {
 
 
 /* =========================================
-   خطأ أثناء التسجيل
+   أخطاء أثناء التسجيل
 ========================================= */
 
 function handleTrackingError(error) {
@@ -1580,6 +1735,7 @@ function handleTrackingError(error) {
 
 
         return;
+
     }
 
 
@@ -1593,6 +1749,7 @@ function handleTrackingError(error) {
         );
 
         return;
+
     }
 
 
@@ -1606,6 +1763,7 @@ function handleTrackingError(error) {
         );
 
         return;
+
     }
 
 }
@@ -1618,12 +1776,14 @@ function handleTrackingError(error) {
 function stopTracking() {
 
     if (!isTracking) {
+
         return;
+
     }
 
 
     /*
-       إيقاف GPS
+       إيقاف GPS.
     */
 
     if (watchId !== null) {
@@ -1641,7 +1801,7 @@ function stopTracking() {
 
 
     /*
-       إعادة زر التسجيل
+       إعادة زر التسجيل.
     */
 
     recordButton.classList.remove(
@@ -1650,7 +1810,7 @@ function stopTracking() {
 
 
     /*
-       إيقاف مؤشر التسجيل
+       إيقاف المؤشر.
     */
 
     trackingIndicator.classList.remove(
@@ -1659,9 +1819,11 @@ function stopTracking() {
 
 
     /*
-       حفظ آخر مسار كما هو على الخريطة.
+       مهم:
 
-       لن نحذفه عند الإيقاف.
+       لا نحذف المسار.
+
+       يبقى المسار السماوي على الخريطة.
     */
 
 }
@@ -1676,14 +1838,15 @@ window.addEventListener(
     function() {
 
         /*
-           إنشاء الخريطة
+           إنشاء الخريطة.
         */
 
         initMap();
 
 
         /*
-           محاولة تحديد الموقع
+           طلب الموقع عند فتح الصفحة
+           لإظهار موقع المستخدم الحالي.
         */
 
         if (
