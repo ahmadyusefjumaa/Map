@@ -1,1897 +1,290 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#071419">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="تتبع التحركات">
 
-<meta name="viewport"
-      content="width=device-width,
-               initial-scale=1.0,
-               maximum-scale=1.0,
-               user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 <title>تتبع التحركات</title>
 
-
-<!-- =====================================================
-     LEAFLET
-===================================================== -->
-
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
-
 <style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
+body{
+  background:#071419;
+  font-family:'Segoe UI',Tahoma,Verdana,sans-serif;
+  position:fixed;inset:0;
+  user-select:none;-webkit-user-select:none;
+  -webkit-touch-callout:none;touch-action:none;
+}
+#map{position:fixed;inset:0;width:100vw;height:100vh;background:#071419;z-index:1}
 
-/* =========================================
-   RESET
-========================================= */
-
-* {
-
-    margin: 0;
-
-    padding: 0;
-
-    box-sizing: border-box;
+/* خريطة ليلية أخف وأكثر وضوحاً */
+.leaflet-container{background:#071419}
+.leaflet-tile{
+  filter:brightness(.72) contrast(1.12) saturate(1.18) hue-rotate(5deg);
 }
 
+/* مؤشر التسجيل */
+.tracking-indicator{
+  position:fixed;
+  top:calc(18px + env(safe-area-inset-top));
+  right:18px;width:13px;height:13px;border-radius:50%;
+  background:rgba(255,255,255,.28);
+  border:2px solid rgba(255,255,255,.5);
+  z-index:1500;transition:.3s;
+}
+.tracking-indicator.active{
+  background:#00ff88;border-color:#00ff88;
+  box-shadow:0 0 0 4px rgba(0,255,136,.18),0 0 20px rgba(0,255,136,.7);
+  animation:pulse 1.4s infinite;
+}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 
-html,
-body {
-
-    width: 100%;
-
-    height: 100%;
-
-    overflow: hidden;
+/* زر التسجيل */
+.record-button{
+  position:fixed;left:50%;
+  bottom:calc(24px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  width:76px;height:76px;padding:0;border:0;border-radius:50%;
+  background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+  z-index:2000;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  box-shadow:0 8px 30px rgba(0,0,0,.5),0 0 0 2px rgba(255,255,255,.92),0 0 0 5px rgba(0,0,0,.3);
+  transition:transform .18s,box-shadow .25s;
+}
+.record-button::before{
+  content:"";position:absolute;width:60px;height:60px;border-radius:50%;
+  background:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.record-icon{
+  position:relative;z-index:2;width:44px;height:44px;border-radius:50%;
+  background:#ff3040;box-shadow:0 2px 10px rgba(255,48,64,.45);
+  transition:.22s;
+}
+.record-button:active{transform:translateX(-50%) scale(.92)}
+.record-button.recording{
+  box-shadow:0 8px 35px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.95),
+  0 0 0 5px rgba(255,48,64,.28),0 0 30px rgba(255,48,64,.45);
+  animation:recordGlow 1.6s infinite;
+}
+@keyframes recordGlow{
+  0%,100%{box-shadow:0 8px 35px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.95),0 0 0 5px rgba(255,48,64,.25),0 0 20px rgba(255,48,64,.35)}
+  50%{box-shadow:0 8px 35px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.95),0 0 0 8px rgba(255,48,64,.15),0 0 35px rgba(255,48,64,.6)}
+}
+.record-button.recording .record-icon{
+  width:24px;height:24px;border-radius:6px;transform:scale(1.05)
 }
 
-
-body {
-
-    background: #02080b;
-
-    font-family:
-        'Segoe UI',
-        Tahoma,
-        Geneva,
-        Verdana,
-        sans-serif;
-
-    position: fixed;
-
-    inset: 0;
-
-    user-select: none;
-
-    -webkit-user-select: none;
-
-    -webkit-touch-callout: none;
-
-    touch-action: none;
+/* رسالة الموقع */
+.location-message{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(calc(100% - 40px),390px);padding:28px 24px;
+  background:rgba(5,13,17,.97);border:1px solid rgba(0,217,255,.3);
+  border-radius:24px;box-shadow:0 25px 80px rgba(0,0,0,.75),0 0 40px rgba(0,217,255,.08);
+  z-index:5000;text-align:center;display:none;
 }
-
-
-/* =========================================
-   الخريطة FULL SCREEN
-========================================= */
-
-#map {
-
-    position: fixed;
-
-    inset: 0;
-
-    width: 100vw;
-
-    height: 100vh;
-
-    z-index: 1;
-
-    background: #02080b;
+.location-message.show{display:block}
+.location-icon{font-size:44px;margin-bottom:14px}
+.location-title{color:#fff;font-size:20px;font-weight:700;margin-bottom:10px}
+.location-text{color:#9aaeb3;font-size:14px;line-height:1.8;margin-bottom:20px}
+.location-button{
+  border:0;padding:12px 28px;border-radius:30px;
+  background:linear-gradient(135deg,#00e5ff,#00aeca);
+  color:#001014;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer
 }
+.location-button:disabled{opacity:.6}
 
-
-/*
-   فلتر ليلي سماوي فوق الخريطة
-*/
-
-#map::after {
-
-    content: "";
-
-    position: absolute;
-
-    inset: 0;
-
-    pointer-events: none;
-
-    z-index: 500;
-
-    background:
-        linear-gradient(
-            rgba(0, 15, 22, 0.30),
-            rgba(0, 8, 13, 0.42)
-        );
-
-    mix-blend-mode: multiply;
+.leaflet-control-zoom{
+  border:0!important;box-shadow:0 5px 20px rgba(0,0,0,.35)!important;
+  margin:calc(18px + env(safe-area-inset-top)) 12px 0 0!important
 }
-
-
-/* =========================================
-   مؤشر التسجيل العلوي
-========================================= */
-
-.tracking-indicator {
-
-    position: fixed;
-
-    top:
-        calc(
-            18px +
-            env(safe-area-inset-top)
-        );
-
-    right: 18px;
-
-    width: 13px;
-
-    height: 13px;
-
-    border-radius: 50%;
-
-    background:
-        rgba(255,255,255,0.25);
-
-    border:
-        2px solid
-        rgba(255,255,255,0.45);
-
-    z-index: 1500;
-
-    transition:
-        all 0.3s ease;
+.leaflet-control-zoom a{
+  background:rgba(5,22,28,.86)!important;color:#00d9ff!important;
+  border-color:rgba(0,217,255,.22)!important
 }
-
-
-.tracking-indicator.active {
-
-    background: #00ff88;
-
-    border-color: #00ff88;
-
-    box-shadow:
-
-        0 0 0 4px
-        rgba(0,255,136,0.20),
-
-        0 0 20px
-        rgba(0,255,136,0.75);
-
-    animation:
-        indicatorPulse 1.4s infinite;
+.leaflet-control-attribution{
+  background:rgba(0,8,12,.55)!important;color:rgba(210,235,240,.7)!important;
+  font-size:9px!important;border-radius:6px!important
 }
+.leaflet-control-attribution a{color:#00d9ff!important}
+.tracked-area,.current-location-dot{pointer-events:none}
 
-
-@keyframes indicatorPulse {
-
-    0%,
-    100% {
-
-        transform: scale(1);
-    }
-
-    50% {
-
-        transform: scale(1.25);
-    }
+@media(max-width:600px){
+  .tracking-indicator{top:calc(16px + env(safe-area-inset-top));right:16px}
 }
-
-
-/* =========================================
-   زر التسجيل - مثل الكاميرا
-========================================= */
-
-.record-button {
-
-    position: fixed;
-
-    left: 50%;
-
-    bottom:
-        calc(
-            28px +
-            env(safe-area-inset-bottom)
-        );
-
-    transform:
-        translateX(-50%);
-
-    width: 78px;
-
-    height: 78px;
-
-    padding: 0;
-
-    border: none;
-
-    border-radius: 50%;
-
-    background:
-        rgba(0, 0, 0, 0.55);
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    z-index: 2000;
-
-    cursor: pointer;
-
-    -webkit-tap-highlight-color:
-        transparent;
-
-    user-select: none;
-
-    touch-action: manipulation;
-
-    box-shadow:
-
-        0 8px 30px
-        rgba(0,0,0,0.55),
-
-        0 0 0 2px
-        rgba(255,255,255,0.90),
-
-        0 0 0 5px
-        rgba(0,0,0,0.35);
-
-    transition:
-
-        transform 0.18s ease,
-
-        box-shadow 0.25s ease;
-}
-
-
-/* =========================================
-   الدائرة البيضاء الداخلية
-========================================= */
-
-.record-button::before {
-
-    content: "";
-
-    position: absolute;
-
-    width: 62px;
-
-    height: 62px;
-
-    border-radius: 50%;
-
-    background: #ffffff;
-
-    box-shadow:
-
-        inset 0 0 0 1px
-        rgba(0,0,0,0.08);
-
-    transition:
-        transform 0.22s ease;
-}
-
-
-/* =========================================
-   الزر الأحمر الداخلي
-========================================= */
-
-.record-icon {
-
-    position: relative;
-
-    z-index: 2;
-
-    width: 46px;
-
-    height: 46px;
-
-    border-radius: 50%;
-
-    background: #ff3040;
-
-    box-shadow:
-
-        0 2px 10px
-        rgba(255,48,64,0.45);
-
-    transition:
-
-        width 0.22s ease,
-
-        height 0.22s ease,
-
-        border-radius 0.22s ease,
-
-        background 0.22s ease,
-
-        transform 0.22s ease;
-}
-
-
-/* =========================================
-   الضغط
-========================================= */
-
-.record-button:active {
-
-    transform:
-        translateX(-50%)
-        scale(0.92);
-}
-
-
-/* =========================================
-   حالة التسجيل
-========================================= */
-
-.record-button.recording {
-
-    box-shadow:
-
-        0 8px 35px
-        rgba(0,0,0,0.6),
-
-        0 0 0 2px
-        rgba(255,255,255,0.95),
-
-        0 0 0 5px
-        rgba(255,48,64,0.30),
-
-        0 0 30px
-        rgba(255,48,64,0.45);
-
-    animation:
-        recordGlow 1.6s infinite;
-}
-
-
-@keyframes recordGlow {
-
-    0%,
-    100% {
-
-        box-shadow:
-
-            0 8px 35px
-            rgba(0,0,0,0.6),
-
-            0 0 0 2px
-            rgba(255,255,255,0.95),
-
-            0 0 0 5px
-            rgba(255,48,64,0.25),
-
-            0 0 20px
-            rgba(255,48,64,0.35);
-    }
-
-
-    50% {
-
-        box-shadow:
-
-            0 8px 35px
-            rgba(0,0,0,0.6),
-
-            0 0 0 2px
-            rgba(255,255,255,0.95),
-
-            0 0 0 8px
-            rgba(255,48,64,0.15),
-
-            0 0 35px
-            rgba(255,48,64,0.60);
-    }
-}
-
-
-/*
-   أثناء التسجيل يتحول الأحمر
-   من دائرة إلى مربع
-*/
-
-.record-button.recording
-.record-icon {
-
-    width: 25px;
-
-    height: 25px;
-
-    border-radius: 6px;
-
-    background: #ff3040;
-
-    transform:
-        scale(1.05);
-}
-
-
-/* =========================================
-   رسالة الموقع
-========================================= */
-
-.location-message {
-
-    position: fixed;
-
-    top: 50%;
-
-    left: 50%;
-
-    transform:
-        translate(-50%, -50%);
-
-    width:
-        min(
-            calc(100% - 40px),
-            390px
-        );
-
-    padding:
-        28px 24px;
-
-    background:
-        rgba(5, 13, 17, 0.97);
-
-    border:
-        1px solid
-        rgba(0,217,255,0.30);
-
-    border-radius: 24px;
-
-    box-shadow:
-
-        0 25px 80px
-        rgba(0,0,0,0.75),
-
-        0 0 40px
-        rgba(0,217,255,0.08);
-
-    z-index: 5000;
-
-    text-align: center;
-
-    display: none;
-}
-
-
-.location-message.show {
-
-    display: block;
-}
-
-
-.location-icon {
-
-    font-size: 44px;
-
-    margin-bottom: 14px;
-}
-
-
-.location-title {
-
-    color: #fff;
-
-    font-size: 20px;
-
-    font-weight: 700;
-
-    margin-bottom: 10px;
-}
-
-
-.location-text {
-
-    color: #9aaeb3;
-
-    font-size: 14px;
-
-    line-height: 1.8;
-
-    margin-bottom: 20px;
-}
-
-
-.location-button {
-
-    border: none;
-
-    padding:
-        12px 28px;
-
-    border-radius: 30px;
-
-    background:
-        linear-gradient(
-            135deg,
-            #00e5ff,
-            #00aeca
-        );
-
-    color: #001014;
-
-    font-family: inherit;
-
-    font-size: 15px;
-
-    font-weight: 700;
-
-    cursor: pointer;
-}
-
-
-.location-button:disabled {
-
-    opacity: 0.6;
-
-    cursor: default;
-}
-
-
-/* =========================================
-   Leaflet - الوضع الليلي
-========================================= */
-
-.leaflet-container {
-
-    background:
-        #02080b;
-}
-
-
-.leaflet-tile {
-
-    filter:
-
-        brightness(0.48)
-
-        contrast(1.25)
-
-        saturate(1.35)
-
-        hue-rotate(8deg);
-}
-
-
-/* =========================================
-   عناصر Leaflet
-========================================= */
-
-.leaflet-control-zoom {
-
-    border: none !important;
-
-    box-shadow:
-        0 5px 20px
-        rgba(0,0,0,0.45) !important;
-
-    margin:
-        calc(
-            18px +
-            env(safe-area-inset-top)
-        )
-        12px
-        0
-        0 !important;
-}
-
-
-.leaflet-control-zoom a {
-
-    background:
-        rgba(4,18,23,0.85) !important;
-
-    color:
-        #00d9ff !important;
-
-    border-color:
-        rgba(0,217,255,0.22) !important;
-}
-
-
-.leaflet-control-zoom a:hover {
-
-    background:
-        rgba(0,217,255,0.18) !important;
-}
-
-
-.leaflet-control-attribution {
-
-    background:
-        rgba(0,8,12,0.55) !important;
-
-    color:
-        rgba(190,220,225,0.65) !important;
-
-    font-size:
-        9px !important;
-
-    border-radius:
-        6px !important;
-}
-
-
-.leaflet-control-attribution a {
-
-    color:
-        #00d9ff !important;
-}
-
-
-/* =========================================
-   منطقة المسار السماوية
-========================================= */
-
-/*
-   المنطقة التي تم المرور بها.
-
-   لا توجد نقاط عليها.
-*/
-
-.tracked-area {
-
-    pointer-events: none;
-
-}
-
-
-/* =========================================
-   نقطة الموقع الحالي
-========================================= */
-
-.current-location-dot {
-
-    pointer-events: none;
-}
-
-
-/* =========================================
-   الهاتف
-========================================= */
-
-@media (max-width: 600px) {
-
-    .record-button {
-
-        width: 76px;
-
-        height: 76px;
-
-        bottom:
-            calc(
-                24px +
-                env(safe-area-inset-bottom)
-            );
-    }
-
-
-    .record-button::before {
-
-        width: 60px;
-
-        height: 60px;
-    }
-
-
-    .record-icon {
-
-        width: 44px;
-
-        height: 44px;
-    }
-
-
-    .record-button.recording
-    .record-icon {
-
-        width: 24px;
-
-        height: 24px;
-    }
-
-
-    .tracking-indicator {
-
-        top:
-            calc(
-                16px +
-                env(safe-area-inset-top)
-            );
-
-        right: 16px;
-    }
-
-}
-
 </style>
-
 </head>
 
-
 <body>
-
-
-<!-- =========================================
-     الخريطة
-========================================= -->
-
 <div id="map"></div>
+<div class="tracking-indicator" id="trackingIndicator"></div>
 
-
-<!-- =========================================
-     مؤشر التسجيل
-========================================= -->
-
-<div
-    class="tracking-indicator"
-    id="trackingIndicator">
+<div class="location-message" id="locationMessage">
+  <div class="location-icon">📍</div>
+  <div class="location-title" id="locationTitle">السماح بالوصول إلى الموقع</div>
+  <div class="location-text" id="locationText">نحتاج إلى الوصول إلى موقعك حتى نتمكن من تتبع تحركاتك على الخريطة.</div>
+  <button class="location-button" id="locationButton" onclick="requestLocation()">السماح بالموقع</button>
 </div>
 
-
-<!-- =========================================
-     رسالة الموقع
-========================================= -->
-
-<div
-    class="location-message"
-    id="locationMessage">
-
-    <div class="location-icon">
-        📍
-    </div>
-
-
-    <div
-        class="location-title"
-        id="locationTitle">
-
-        السماح بالوصول إلى الموقع
-
-    </div>
-
-
-    <div
-        class="location-text"
-        id="locationText">
-
-        نحتاج إلى الوصول إلى موقعك
-        حتى نتمكن من تتبع تحركاتك
-        على الخريطة.
-
-    </div>
-
-
-    <button
-        class="location-button"
-        id="locationButton"
-        onclick="requestLocation()">
-
-        السماح بالموقع
-
-    </button>
-
-</div>
-
-
-<!-- =========================================
-     زر التسجيل
-========================================= -->
-
-<button
-    class="record-button"
-    id="recordButton"
-    aria-label="التسجيل"
-    onclick="toggleTracking()">
-
-    <span
-        class="record-icon"
-        id="recordIcon">
-    </span>
-
+<button class="record-button" id="recordButton" aria-label="التسجيل" onclick="toggleTracking()">
+  <span class="record-icon"></span>
 </button>
 
-
-<!-- =========================================
-     LEAFLET
-========================================= -->
-
-<script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-</script>
-
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-
-/* =========================================
-   المتغيرات
-========================================= */
-
-let map = null;
-
-
-/*
-   معرف مراقبة GPS
-*/
-
-let watchId = null;
-
-
-/*
-   هل التسجيل يعمل؟
-*/
-
-let isTracking = false;
-
-
-/*
-   هل وصلنا لأول موقع؟
-*/
-
-let firstLocationReceived = false;
-
-
-/*
-   جميع نقاط المسار.
-
-   تستخدم فقط لرسم المنطقة
-   السماوية التي تم المرور بها.
-*/
-
-let routePoints = [];
-
-
-/*
-   طبقة المنطقة السماوية.
-*/
-
-let trackedArea = null;
-
-
-/*
-   نقطة موقع المستخدم الحالية فقط.
-
-   لن يتم إنشاء نقاط جديدة.
-*/
-
-let currentLocationMarker = null;
-
-
-/*
-   آخر نقطة تم تسجيلها
-   في المسار.
-*/
-
-let lastRoutePoint = null;
-
-
-/* =========================================
-   عناصر الصفحة
-========================================= */
-
-const recordButton =
-    document.getElementById(
-        "recordButton"
-    );
-
-
-const trackingIndicator =
-    document.getElementById(
-        "trackingIndicator"
-    );
-
-
-const locationMessage =
-    document.getElementById(
-        "locationMessage"
-    );
-
-
-const locationTitle =
-    document.getElementById(
-        "locationTitle"
-    );
-
-
-const locationText =
-    document.getElementById(
-        "locationText"
-    );
-
-
-const locationButton =
-    document.getElementById(
-        "locationButton"
-    );
-
-
-/* =========================================
-   إنشاء الخريطة
-========================================= */
-
-function initMap(
-    lat = 25.2048,
-    lng = 55.2708
-) {
-
-    /*
-       إذا كانت الخريطة موجودة
-       لا ننشئها مرة أخرى.
-    */
-
-    if (map !== null) {
-
-        return;
-
-    }
-
-
-    map =
-        L.map(
-            "map",
-            {
-
-                zoomControl: true,
-
-                attributionControl: true,
-
-                zoomAnimation: true,
-
-                fadeAnimation: true
-
-            }
-        ).setView(
-            [lat, lng],
-            15
-        );
-
-
-    /* =====================================
-       OpenStreetMap
-    ===================================== */
-
-    L.tileLayer(
-
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-
-        {
-
-            attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-
-            maxZoom: 19
-
-        }
-
-    ).addTo(map);
-
-
-    setTimeout(
-
-        function() {
-
-            map.invalidateSize();
-
-        },
-
-        300
-
-    );
-
+let map=null,watchId=null,isTracking=false,firstLocationReceived=false;
+let routePoints=[],trackedArea=null,currentLocationMarker=null,lastRoutePoint=null;
+
+const recordButton=document.getElementById("recordButton");
+const trackingIndicator=document.getElementById("trackingIndicator");
+const locationMessage=document.getElementById("locationMessage");
+const locationTitle=document.getElementById("locationTitle");
+const locationText=document.getElementById("locationText");
+const locationButton=document.getElementById("locationButton");
+
+function initMap(lat=25.2048,lng=55.2708){
+  if(map!==null)return;
+  map=L.map("map",{zoomControl:true,attributionControl:true,zoomAnimation:true,fadeAnimation:true}).setView([lat,lng],15);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+  setTimeout(()=>map.invalidateSize(),300);
 }
 
+function showLocationMessage(title,text,buttonText="حاول مرة أخرى"){
+  locationTitle.textContent=title;
+  locationText.textContent=text;
+  locationButton.textContent=buttonText;
+  locationMessage.classList.add("show");
+}
+function hideLocationMessage(){locationMessage.classList.remove("show")}
 
-/* =========================================
-   رسالة الموقع
-========================================= */
-
-function showLocationMessage(
-    title,
-    text,
-    buttonText = "حاول مرة أخرى"
-) {
-
-    locationTitle.textContent =
-        title;
-
-
-    locationText.textContent =
-        text;
-
-
-    locationButton.textContent =
-        buttonText;
-
-
-    locationMessage.classList.add(
-        "show"
-    );
-
+function requestLocation(){
+  if(!navigator.geolocation){
+    showLocationMessage("المتصفح لا يدعم الموقع","المتصفح الحالي لا يدعم تحديد الموقع.","حسنًا");return;
+  }
+  const secure=window.isSecureContext||location.hostname==="localhost"||location.hostname==="127.0.0.1";
+  if(!secure){
+    showLocationMessage("الاتصال غير آمن","تحديد الموقع يحتاج إلى HTTPS. افتح الموقع من رابط HTTPS.","فهمت");return;
+  }
+  locationButton.disabled=true;locationButton.textContent="جاري تحديد الموقع...";
+  navigator.geolocation.getCurrentPosition(position=>{
+    const {latitude:lat,longitude:lng}=position.coords;
+    initMap(lat,lng);map.setView([lat,lng],17);updateCurrentLocation(lat,lng);
+    hideLocationMessage();locationButton.disabled=false;locationButton.textContent="حاول مرة أخرى";
+  },error=>{
+    locationButton.disabled=false;locationButton.textContent="حاول مرة أخرى";handleLocationError(error);
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
 
-
-function hideLocationMessage() {
-
-    locationMessage.classList.remove(
-        "show"
-    );
-
+function handleLocationError(error){
+  if(error.code===1)showLocationMessage("تم رفض الوصول للموقع","فعّل صلاحية الموقع للمتصفح من إعدادات الهاتف ثم حاول مرة أخرى.");
+  else if(error.code===2)showLocationMessage("الموقع غير متاح","تأكد من تشغيل خدمات الموقع وGPS ثم حاول مرة أخرى.");
+  else if(error.code===3)showLocationMessage("انتهت مهلة تحديد الموقع","حاول مرة أخرى في مكان مفتوح.");
+  else showLocationMessage("تعذر تحديد الموقع","حدث خطأ أثناء الحصول على موقعك.");
 }
 
+function toggleTracking(){isTracking?stopTracking():startTracking()}
 
-/* =========================================
-   طلب الموقع
-========================================= */
+function startTracking(){
+  if(isTracking)return;
+  if(!navigator.geolocation){showLocationMessage("الموقع غير مدعوم","المتصفح لا يدعم تحديد الموقع.","حسنًا");return}
+  if(map===null)initMap();
+  const secure=window.isSecureContext||location.hostname==="localhost"||location.hostname==="127.0.0.1";
+  if(!secure){showLocationMessage("الاتصال غير آمن","يجب تشغيل الموقع عبر HTTPS حتى يعمل تتبع الموقع.","فهمت");return}
 
-function requestLocation() {
+  isTracking=true;firstLocationReceived=false;routePoints=[];lastRoutePoint=null;
+  if(trackedArea){map.removeLayer(trackedArea);trackedArea=null}
+  recordButton.classList.add("recording");
+  trackingIndicator.classList.add("active");
 
-    if (!navigator.geolocation) {
-
-        showLocationMessage(
-
-            "المتصفح لا يدعم الموقع",
-
-            "المتصفح الحالي لا يدعم تحديد الموقع.",
-
-            "حسنًا"
-
-        );
-
-        return;
+  watchId=navigator.geolocation.watchPosition(position=>{
+    const {latitude:lat,longitude:lng}=position.coords;
+    updateCurrentLocation(lat,lng);
+    addRoutePoint(lat,lng);
+    if(!firstLocationReceived){
+      map.setView([lat,lng],17);
+      firstLocationReceived=true;
     }
-
-
-    /*
-       تحديد الموقع يحتاج HTTPS.
-    */
-
-    const isSecure =
-        window.isSecureContext ||
-        location.hostname === "localhost" ||
-        location.hostname === "127.0.0.1";
-
-
-    if (!isSecure) {
-
-        showLocationMessage(
-
-            "الاتصال غير آمن",
-
-            "تحديد الموقع يحتاج إلى HTTPS. لا تفتح ملف HTML مباشرة من الهاتف، بل شغّله من رابط HTTPS.",
-
-            "فهمت"
-
-        );
-
-        return;
-    }
-
-
-    locationButton.disabled =
-        true;
-
-
-    locationButton.textContent =
-        "جاري تحديد الموقع...";
-
-
-    navigator.geolocation.getCurrentPosition(
-
-        function(position) {
-
-            const lat =
-                position.coords.latitude;
-
-
-            const lng =
-                position.coords.longitude;
-
-
-            initMap(
-                lat,
-                lng
-            );
-
-
-            map.setView(
-                [lat, lng],
-                17
-            );
-
-
-            /*
-               إظهار موقع المستخدم الحالي.
-            */
-
-            updateCurrentLocation(
-                lat,
-                lng
-            );
-
-
-            hideLocationMessage();
-
-
-            locationButton.disabled =
-                false;
-
-
-            locationButton.textContent =
-                "حاول مرة أخرى";
-
-        },
-
-
-        function(error) {
-
-            locationButton.disabled =
-                false;
-
-
-            locationButton.textContent =
-                "حاول مرة أخرى";
-
-
-            handleLocationError(
-                error
-            );
-
-        },
-
-
-        {
-
-            enableHighAccuracy: true,
-
-            timeout: 15000,
-
-            maximumAge: 0
-
-        }
-
-    );
-
+  },handleTrackingError,{enableHighAccuracy:true,timeout:15000,maximumAge:2000});
 }
 
-
-/* =========================================
-   أخطاء الموقع
-========================================= */
-
-function handleLocationError(error) {
-
-    console.error(
-        "Geolocation:",
-        error
-    );
-
-
-    switch (error.code) {
-
-        case error.PERMISSION_DENIED:
-
-            showLocationMessage(
-
-                "تم رفض الوصول للموقع",
-
-                "فعّل صلاحية الموقع للمتصفح من إعدادات الهاتف، ثم اضغط حاول مرة أخرى.",
-
-                "حاول مرة أخرى"
-
-            );
-
-            break;
-
-
-        case error.POSITION_UNAVAILABLE:
-
-            showLocationMessage(
-
-                "الموقع غير متاح",
-
-                "تأكد من تشغيل خدمات الموقع وGPS في الهاتف ثم حاول مرة أخرى.",
-
-                "حاول مرة أخرى"
-
-            );
-
-            break;
-
-
-        case error.TIMEOUT:
-
-            showLocationMessage(
-
-                "انتهت مهلة تحديد الموقع",
-
-                "تعذر الحصول على موقعك. حاول مرة أخرى في مكان مفتوح.",
-
-                "حاول مرة أخرى"
-
-            );
-
-            break;
-
-
-        default:
-
-            showLocationMessage(
-
-                "تعذر تحديد الموقع",
-
-                "حدث خطأ أثناء الحصول على موقعك.",
-
-                "حاول مرة أخرى"
-
-            );
-
-    }
-
+function updateCurrentLocation(lat,lng){
+  const p=[lat,lng];
+  if(!currentLocationMarker){
+    currentLocationMarker=L.circleMarker(p,{
+      radius:8,color:"#fff",weight:3,fillColor:"#00d9ff",
+      fillOpacity:1,interactive:false,className:"current-location-dot"
+    }).addTo(map);
+  }else currentLocationMarker.setLatLng(p);
 }
 
-
-/* =========================================
-   تشغيل / إيقاف التسجيل
-========================================= */
-
-function toggleTracking() {
-
-    if (isTracking) {
-
-        stopTracking();
-
-    } else {
-
-        startTracking();
-
-    }
-
+function addRoutePoint(lat,lng){
+  const p=[lat,lng];
+  if(!lastRoutePoint){
+    routePoints.push(p);lastRoutePoint=p;createTrackedArea();return;
+  }
+  if(map.distance(lastRoutePoint,p)<3)return;
+  routePoints.push(p);lastRoutePoint=p;updateTrackedArea();
 }
 
-
-/* =========================================
-   بدء التسجيل
-========================================= */
-
-function startTracking() {
-
-    if (isTracking) {
-
-        return;
-
-    }
-
-
-    if (!navigator.geolocation) {
-
-        showLocationMessage(
-
-            "الموقع غير مدعوم",
-
-            "المتصفح لا يدعم تحديد الموقع.",
-
-            "حسنًا"
-
-        );
-
-        return;
-
-    }
-
-
-    if (map === null) {
-
-        initMap();
-
-    }
-
-
-    /*
-       التأكد من HTTPS.
-    */
-
-    const isSecure =
-        window.isSecureContext ||
-        location.hostname === "localhost" ||
-        location.hostname === "127.0.0.1";
-
-
-    if (!isSecure) {
-
-        showLocationMessage(
-
-            "الاتصال غير آمن",
-
-            "يجب تشغيل الموقع عبر HTTPS حتى يعمل تتبع الموقع.",
-
-            "فهمت"
-
-        );
-
-        return;
-
-    }
-
-
-    /* =====================================
-       بدء جلسة تسجيل جديدة
-    ===================================== */
-
-    isTracking = true;
-
-
-    firstLocationReceived =
-        false;
-
-
-    /*
-       تصفير نقاط المسار.
-    */
-
-    routePoints = [];
-
-
-    lastRoutePoint = null;
-
-
-    /*
-       حذف المسار السابق فقط.
-
-       نقطة الموقع الحالية ستبقى
-       وسيتم تحديثها.
-    */
-
-    if (trackedArea !== null) {
-
-        map.removeLayer(
-            trackedArea
-        );
-
-        trackedArea = null;
-
-    }
-
-
-    /* =====================================
-       شكل زر التسجيل
-    ===================================== */
-
-    recordButton.classList.add(
-        "recording"
-    );
-
-
-    /* =====================================
-       مؤشر التسجيل
-    ===================================== */
-
-    trackingIndicator.classList.add(
-        "active"
-    );
-
-
-    /* =====================================
-       مراقبة الموقع
-    ===================================== */
-
-    watchId =
-        navigator.geolocation.watchPosition(
-
-            function(position) {
-
-                const lat =
-                    position.coords.latitude;
-
-
-                const lng =
-                    position.coords.longitude;
-
-
-                /* ---------------------------------
-                   تحديث نقطة الموقع الحالية فقط
-                --------------------------------- */
-
-                updateCurrentLocation(
-                    lat,
-                    lng
-                );
-
-
-                /* ---------------------------------
-                   تسجيل المنطقة التي تم المرور بها
-                --------------------------------- */
-
-                addRoutePoint(
-                    lat,
-                    lng
-                );
-
-
-                /* ---------------------------------
-                   تحريك الخريطة لأول موقع فقط
-                --------------------------------- */
-
-                if (!firstLocationReceived) {
-
-                    map.setView(
-                        [lat, lng],
-                        17
-                    );
-
-
-                    firstLocationReceived =
-                        true;
-
-                }
-
-            },
-
-
-            function(error) {
-
-                handleTrackingError(
-                    error
-                );
-
-            },
-
-
-            {
-
-                enableHighAccuracy: true,
-
-                timeout: 15000,
-
-                maximumAge: 2000
-
-            }
-
-        );
-
+function createTrackedArea(){
+  if(!map||!routePoints.length)return;
+  trackedArea=L.polyline(routePoints,{
+    className:"tracked-area",color:"#00d9ff",weight:32,opacity:.30,
+    lineCap:"round",lineJoin:"round",interactive:false
+  }).addTo(map);
+}
+function updateTrackedArea(){
+  if(trackedArea&&routePoints.length)trackedArea.setLatLngs(routePoints);
 }
 
-
-/* =========================================
-   تحديث نقطة الموقع الحالية
-========================================= */
-
-function updateCurrentLocation(
-    lat,
-    lng
-) {
-
-    const position =
-        [lat, lng];
-
-
-    /*
-       إذا لم تكن نقطة الموقع موجودة،
-       ننشئها مرة واحدة فقط.
-    */
-
-    if (currentLocationMarker === null) {
-
-        currentLocationMarker =
-            L.circleMarker(
-
-                position,
-
-                {
-
-                    radius: 8,
-
-                    color: "#ffffff",
-
-                    weight: 3,
-
-                    fillColor: "#00d9ff",
-
-                    fillOpacity: 1,
-
-                    interactive: false,
-
-                    className:
-                        "current-location-dot"
-
-                }
-
-            ).addTo(map);
-
-
-    } else {
-
-        /*
-           لا ننشئ نقطة جديدة.
-
-           فقط نحرك النقطة القديمة
-           إلى الموقع الجديد.
-        */
-
-        currentLocationMarker.setLatLng(
-            position
-        );
-
-    }
-
+function handleTrackingError(error){
+  if(error.code===1){
+    stopTracking();
+    showLocationMessage("تم رفض صلاحية الموقع","فعّل صلاحية الموقع للمتصفح من إعدادات الهاتف ثم اضغط زر التسجيل مرة أخرى.");
+  }
 }
 
-
-/* =========================================
-   تسجيل نقطة في المسار
-========================================= */
-
-function addRoutePoint(
-    lat,
-    lng
-) {
-
-    const newPoint =
-        [lat, lng];
-
-
-    /*
-       أول نقطة في المسار.
-    */
-
-    if (lastRoutePoint === null) {
-
-        routePoints.push(
-            newPoint
-        );
-
-
-        lastRoutePoint =
-            newPoint;
-
-
-        createTrackedArea();
-
-
-        return;
-
-    }
-
-
-    /*
-       حساب المسافة بين النقطة الحالية
-       وآخر نقطة مسجلة.
-    */
-
-    const distance =
-        map.distance(
-            lastRoutePoint,
-            newPoint
-        );
-
-
-    /*
-       تجاهل اهتزاز GPS البسيط.
-
-       لن نسجل حركة أقل من 3 أمتار.
-    */
-
-    if (distance < 3) {
-
-        return;
-
-    }
-
-
-    /*
-       إضافة النقطة الجديدة.
-    */
-
-    routePoints.push(
-        newPoint
-    );
-
-
-    lastRoutePoint =
-        newPoint;
-
-
-    /*
-       تحديث المنطقة السماوية.
-    */
-
-    updateTrackedArea();
-
+function stopTracking(){
+  if(!isTracking)return;
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  isTracking=false;recordButton.classList.remove("recording");
+  trackingIndicator.classList.remove("active");
 }
 
+window.addEventListener("load",()=>{
+  initMap();
+  if(navigator.geolocation)requestLocation();
+  else showLocationMessage("الموقع غير مدعوم","المتصفح الحالي لا يدعم تحديد الموقع.","حسنًا");
+});
+window.addEventListener("resize",()=>{if(map)map.invalidateSize()});
 
-/* =========================================
-   إنشاء المنطقة السماوية
-========================================= */
-
-function createTrackedArea() {
-
-    if (
-        !map ||
-        routePoints.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    /*
-       الخط هنا عريض وشفاف.
-
-       النتيجة البصرية:
-       المنطقة التي مررت بها تصبح
-       سماوية شفافة.
-    */
-
-    trackedArea =
-        L.polyline(
-
-            routePoints,
-
-            {
-
-                className:
-                    "tracked-area",
-
-                color:
-                    "#00d9ff",
-
-                weight:
-                    32,
-
-                opacity:
-                    0.30,
-
-                lineCap:
-                    "round",
-
-                lineJoin:
-                    "round",
-
-                interactive:
-                    false
-
-            }
-
-        ).addTo(map);
-
+/* تسجيل Service Worker لتثبيت الموقع كتطبيق */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./service-worker.js").catch(console.error);
+  });
 }
 
-
-/* =========================================
-   تحديث المنطقة السماوية
-========================================= */
-
-function updateTrackedArea() {
-
-    if (
-        trackedArea === null ||
-        routePoints.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    /*
-       تحديث نفس الطبقة.
-
-       لا ننشئ طبقة جديدة كل مرة.
-    */
-
-    trackedArea.setLatLngs(
-        routePoints
-    );
-
-}
-
-
-/* =========================================
-   أخطاء أثناء التسجيل
-========================================= */
-
-function handleTrackingError(error) {
-
-    console.error(
-        "Tracking error:",
-        error
-    );
-
-
-    if (
-        error.code ===
-        error.PERMISSION_DENIED
-    ) {
-
-        stopTracking();
-
-
-        showLocationMessage(
-
-            "تم رفض صلاحية الموقع",
-
-            "فعّل صلاحية الموقع للمتصفح من إعدادات الهاتف ثم اضغط على زر التسجيل مرة أخرى.",
-
-            "حاول مرة أخرى"
-
-        );
-
-
-        return;
-
-    }
-
-
-    if (
-        error.code ===
-        error.POSITION_UNAVAILABLE
-    ) {
-
-        console.warn(
-            "الموقع غير متاح حاليًا"
-        );
-
-        return;
-
-    }
-
-
-    if (
-        error.code ===
-        error.TIMEOUT
-    ) {
-
-        console.warn(
-            "انتهت مهلة تحديد الموقع"
-        );
-
-        return;
-
-    }
-
-}
-
-
-/* =========================================
-   إيقاف التسجيل
-========================================= */
-
-function stopTracking() {
-
-    if (!isTracking) {
-
-        return;
-
-    }
-
-
-    /*
-       إيقاف GPS.
-    */
-
-    if (watchId !== null) {
-
-        navigator.geolocation.clearWatch(
-            watchId
-        );
-
-        watchId = null;
-
-    }
-
-
-    isTracking = false;
-
-
-    /*
-       إعادة زر التسجيل.
-    */
-
-    recordButton.classList.remove(
-        "recording"
-    );
-
-
-    /*
-       إيقاف المؤشر.
-    */
-
-    trackingIndicator.classList.remove(
-        "active"
-    );
-
-
-    /*
-       مهم:
-
-       لا نحذف المسار.
-
-       يبقى المسار السماوي على الخريطة.
-    */
-
-}
-
-
-/* =========================================
-   تشغيل الصفحة
-========================================= */
-
-window.addEventListener(
-    "load",
-    function() {
-
-        /*
-           إنشاء الخريطة.
-        */
-
-        initMap();
-
-
-        /*
-           طلب الموقع عند فتح الصفحة
-           لإظهار موقع المستخدم الحالي.
-        */
-
-        if (
-            navigator.geolocation
-        ) {
-
-            requestLocation();
-
-        } else {
-
-            showLocationMessage(
-
-                "الموقع غير مدعوم",
-
-                "المتصفح الحالي لا يدعم تحديد الموقع.",
-
-                "حسنًا"
-
-            );
-
-        }
-
-    }
-);
-
-
-/* =========================================
-   إصلاح حجم الخريطة
-========================================= */
-
-window.addEventListener(
-    "resize",
-    function() {
-
-        if (map) {
-
-            map.invalidateSize();
-
-        }
-
-    }
-);
-
+/* تجهيز نافذة التثبيت عندما يدعمها المتصفح.
+   لا نضيف زرًا حتى تبقى الخريطة نظيفة؛ يمكن التثبيت من قائمة المتصفح. */
+let deferredInstallPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+});
 </script>
-
 </body>
-
 </html>
